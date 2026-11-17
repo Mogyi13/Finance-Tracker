@@ -1,7 +1,17 @@
 <Solution>
-  <Project Path="FinanceTracker.API/FinanceTracker.API.csproj" />
-  <Project Path="FinanceTracker.Application/FinanceTracker.Application.csproj" />
+  <Project Path="docker-compose.dcproj">
+    <Build />
+  </Project>
+  <Project Path="FinanceTracker.API/FinanceTracker.API.csproj">
+    <BuildDependency Project="FinanceTracker.Application/FinanceTracker.Application.csproj" />
+    <BuildDependency Project="FinanceTracker.Infrastructure/FinanceTracker.Infrastructure.csproj" />
+  </Project>
+  <Project Path="FinanceTracker.Application/FinanceTracker.Application.csproj">
+    <BuildDependency Project="FinanceTracker.Domain/FinanceTracker.Domain.csproj" />
+  </Project>
   <Project Path="FinanceTracker.Domain/FinanceTracker.Domain.csproj" />
-  <Project Path="FinanceTracker.Infrastructure/FinanceTracker.Infrastructure.csproj" />
+  <Project Path="FinanceTracker.Infrastructure/FinanceTracker.Infrastructure.csproj">
+    <BuildDependency Project="FinanceTracker.Application/FinanceTracker.Application.csproj" />
+  </Project>
   <Project Path="FinanceTracker.Web/FinanceTracker.Web.csproj" />
 </Solution>

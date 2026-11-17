@@ -58,7 +58,7 @@ Az első verzió nem tartalmaz:
 |---|---|
 | Programozási nyelv | C# |
 | Backend | ASP.NET Core Web API |
-| Frontend | Blazor WebAssembly |
+| Frontend | Blazor Web App (InteractiveServer) |
 | ORM | Entity Framework Core |
 | Adatbázis | Microsoft SQL Server |
 | Hitelesítés | ASP.NET Core Identity + JWT |
@@ -68,7 +68,7 @@ Az első verzió nem tartalmaz:
 | Verziókezelés | Git, GitHub |
 | API dokumentáció | OpenAPI / Swagger |
 
-**Frontend-megjegyzés:** a Blazor WebAssembly választása illeszkedik a különálló ASP.NET Core Web API architektúrához. A frontend HTTP-kéréseken keresztül kommunikál a backenddel.
+**Frontend-megjegyzés:** a Blazor Web App (InteractiveServer) választása illeszkedik a különálló ASP.NET Core Web API architektúrához. A frontend HTTP-kéréseken keresztül kommunikál a backenddel.
 
 ---
 
@@ -92,10 +92,10 @@ Nem cél a mikroservice architektúra kialakítása.
 ### 3.2. Solution struktúra
 
 ```text
-SmartFinance/
+FinanceTracker/
 │
 ├── src/
-│   ├── SmartFinance.Domain/
+│   ├── FinanceTracker.Domain/
 │   │   ├── Common/
 │   │   ├── Users/
 │   │   ├── Transactions/
@@ -105,7 +105,7 @@ SmartFinance/
 │   │   ├── Analytics/
 │   │   └── Forecasting/
 │   │
-│   ├── SmartFinance.Application/
+│   ├── FinanceTracker.Application/
 │   │   ├── Common/
 │   │   ├── Authentication/
 │   │   ├── Transactions/
@@ -116,7 +116,7 @@ SmartFinance/
 │   │   ├── Analytics/
 │   │   └── Forecasting/
 │   │
-│   ├── SmartFinance.Infrastructure/
+│   ├── FinanceTracker.Infrastructure/
 │   │   ├── Persistence/
 │   │   ├── Identity/
 │   │   ├── Repositories/
@@ -124,22 +124,22 @@ SmartFinance/
 │   │   ├── ImportProcessing/
 │   │   └── BackgroundJobs/
 │   │
-│   ├── SmartFinance.API/
+│   ├── FinanceTracker.API/
 │   │   ├── Controllers/
 │   │   ├── Middleware/
 │   │   └── Configuration/
 │   │
-│   └── SmartFinance.Web/
+│   └── FinanceTracker.Web/
 │       ├── Components/
 │       ├── Pages/
 │       ├── Layout/
 │       └── Services/
 │
 ├── tests/
-│   ├── SmartFinance.Domain.Tests/
-│   ├── SmartFinance.Application.Tests/
-│   ├── SmartFinance.Infrastructure.Tests/
-│   └── SmartFinance.API.Tests/
+│   ├── FinanceTracker.Domain.Tests/
+│   ├── FinanceTracker.Application.Tests/
+│   ├── FinanceTracker.Infrastructure.Tests/
+│   └── FinanceTracker.API.Tests/
 │
 ├── docs/
 │   ├── SPECIFICATION.md
@@ -641,7 +641,7 @@ A modell újratanítása külön folyamatban történjen, és minden új verzió
 ## Authentication
 - POST `/api/auth/register`
 - POST `/api/auth/login`
-- POST `/api/auth/logout`
+- POST `/api/auth/logout` (opcionális)
 - GET `/api/auth/me`
 - PUT `/api/auth/profile`
 

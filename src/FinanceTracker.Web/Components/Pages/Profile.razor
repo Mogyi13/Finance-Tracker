@@ -1,0 +1,130 @@
+﻿@page "/profile"
+@attribute [Authorize]
+@using System.ComponentModel.DataAnnotations
+@inject AuthApiClient Api
+@inject JwtAuthenticationStateProvider Session
+@inject NavigationManager Navigation
+
+<PageTitle>Profil</PageTitle>
+
+<div class="row">
+    <div class="col-md-8 col-lg-5">
+        <h1 class="h3 mb-3">Profil</h1>
+
+        @if (_loading)
+        {
+            <p>Betöltés…</p>
+        }
+        else if (_user is null)
+        {
+            <div class="alert alert-danger" role="alert">@(_errors.FirstOrDefault() ?? "A profil nem tölthető be.")</div>
+        }
+        else
+        {
+            if (_saved)
+            {
+                <div class="alert alert-success" role="status">A profil módosítása sikeres.</div>
+            }
+
+            if (_errors.Count > 0)
+            {
+                <div class="alert alert-danger" role="alert">
+                    <ul class="mb-0">
+                        @foreach (var error in _errors)
+                        {
+                            <li>@error</li>
+                        }
+                    </ul>
+                </div>
+            }
+
+            <EditForm Model="_model" OnValidSubmit="SaveAsync">
+                <DataAnnotationsValidator />
+
+                <div class="mb-3">
+                    <label class="form-label" for="email">E-mail-cím</label>
+                    <input id="email" class="form-control" value="@_user.Email" readonly />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label" for="displayName">Megjelenítendő név</label>
+                    <InputText id="displayName" class="form-control" @bind-Value="_model.DisplayName" />
+                    <ValidationMessage For="() => _model.DisplayName" class="text-danger" />
+                </div>
+
+                <div class="mb-3 text-muted">Regisztráció: @_user.CreatedAt.ToLocalTime().ToString("yyyy. MM. dd. HH:mm")</div>
+
+                <button type="submit" class="btn btn-primary" disabled="@_busy">Mentés</button>
+            </EditForm>
+        }
+    </div>
+</div>
+
+@code {
+    private readonly ProfileModel _model = new();
+    private UserProfileDto? _user;
+    private List<string> _errors = new();
+    private bool _loading = true;
+    private bool _busy;
+    private bool _saved;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await Api.GetMeAsync();
+        if (result.IsSuccess)
+        {
+            _user = result.Value;
+            _model.DisplayName = _user!.DisplayName;
+        }
+        else if (result.IsUnauthorized)
+        {
+            await SignOutAndRedirectAsync();
+            return;
+        }
+        else
+        {
+            _errors = result.Messages.ToList();
+        }
+
+        _loading = false;
+    }
+
+    private async Task SaveAsync()
+    {
+        _busy = true;
+        _saved = false;
+        _errors = new List<string>();
+
+        var result = await Api.UpdateProfileAsync(new UpdateProfileCommand(_model.DisplayName.Trim()));
+        if (result.IsSuccess)
+        {
+            _user = result.Value;
+            _model.DisplayName = _user!.DisplayName;
+            _saved = true;
+        }
+        else if (result.IsUnauthorized)
+        {
+            await SignOutAndRedirectAsync();
+            return;
+        }
+        else
+        {
+            _errors = result.Messages.ToList();
+        }
+
+        _busy = false;
+    }
+
+    private async Task SignOutAndRedirectAsync()
+    {
+        await Session.SignOutAsync();
+        Navigation.NavigateTo("login");
+    }
+
+    private sealed class ProfileModel
+    {
+        [Required(ErrorMessage = "A megjelenítendő név megadása kötelező.")]
+        [StringLength(100, ErrorMessage = "A megjelenítendő név legfeljebb 100 karakter lehet.")]
+        public string DisplayName { get; set; } = string.Empty;
+    }
+}

@@ -1,0 +1,52 @@
+# Indítás:  docker compose up --build
+# Csak az adatbázis:  docker compose up sqlserver   (az API és a Web lokálisan futtatható)
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: 'Y'
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?Állítsd be az MSSQL_SA_PASSWORD értékét az .env fájlban}
+    ports:
+      - '1434:1433'
+    volumes:
+      - sqldata:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  financetracker.api:
+    build:
+      context: .
+      dockerfile: FinanceTracker.API/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Default: 'Server=sqlserver;Database=FinanceTracker;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True'
+      Jwt__Key: ${JWT_KEY:?Állítsd be a JWT_KEY értékét az .env fájlban (legalább 32 karakter)}
+      Jwt__Issuer: financetracker-api
+      Jwt__Audience: financetracker-web
+      Database__AutoMigrate: 'true'
+    ports:
+      - '5080:8080'
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+
+  financetracker.web:
+    build:
+      context: .
+      dockerfile: FinanceTracker.Web/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      Api__BaseUrl: http://financetracker.api:8080
+    ports:
+      - '5090:8080'
+    depends_on:
+      - financetracker.api
+
+volumes:
+  sqldata:
+
