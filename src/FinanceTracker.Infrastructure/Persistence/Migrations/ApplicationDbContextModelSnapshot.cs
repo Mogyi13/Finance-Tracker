@@ -120,6 +120,75 @@ namespace FinanceTracker.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("FinanceTracker.Domain.Entities.Transaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<byte>("CategorizationStatus")
+                        .HasColumnType("tinyint");
+
+                    b.Property<Guid?>("CategoryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .IsUnicode(false)
+                        .HasColumnType("char(3)")
+                        .IsFixedLength();
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<byte>("Source")
+                        .HasColumnType("tinyint");
+
+                    b.Property<DateOnly>("TransactionDate")
+                        .HasColumnType("date");
+
+                    b.Property<byte>("Type")
+                        .HasColumnType("tinyint");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoryId");
+
+                    b.HasIndex("UserId", "TransactionDate");
+
+                    b.HasIndex("UserId", "CategoryId", "TransactionDate");
+
+                    b.HasIndex("UserId", "Type", "TransactionDate");
+
+                    b.ToTable("Transactions", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Transactions_Amount_Positive", "[Amount] > 0");
+
+                            t.HasCheckConstraint("CK_Transactions_CategorizationStatus", "[CategorizationStatus] BETWEEN 0 AND 3");
+
+                            t.HasCheckConstraint("CK_Transactions_Currency_Length", "LEN([Currency]) = 3");
+
+                            t.HasCheckConstraint("CK_Transactions_Source", "[Source] IN (1, 2)");
+
+                            t.HasCheckConstraint("CK_Transactions_Type", "[Type] IN (1, 2)");
+                        });
+                });
+
             modelBuilder.Entity("FinanceTracker.Infrastructure.Identity.ApplicationUser", b =>
                 {
                     b.Property<Guid>("Id")
@@ -331,6 +400,20 @@ namespace FinanceTracker.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade);
+                });
+
+            modelBuilder.Entity("FinanceTracker.Domain.Entities.Transaction", b =>
+                {
+                    b.HasOne("FinanceTracker.Domain.Entities.Category", null)
+                        .WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("FinanceTracker.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>

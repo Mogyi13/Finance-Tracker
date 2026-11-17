@@ -19,4 +19,10 @@ public class Category
     public bool IsSystemCategory { get; set; }
 
     public DateTime CreatedAt { get; set; }
+
+    /// <summary>Rendszerkategória vagy a megadott felhasználó saját kategóriája.</summary>
+    public bool IsAvailableTo(Guid userId) => UserId is null || UserId == userId;
+
+    /// <summary>Bevétel csak bevételi, kiadás csak kiadási kategóriába sorolható.</summary>
+    public bool IsCompatibleWith(TransactionType type) => (byte)Type == (byte)type;
 }

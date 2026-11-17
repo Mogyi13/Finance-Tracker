@@ -17,6 +17,8 @@ builder.Services.AddScoped<AuthenticationStateProvider>(
 var apiBaseUrl = builder.Configuration["Api:BaseUrl"]
     ?? throw new InvalidOperationException("Hiányzik az Api:BaseUrl beállítás.");
 builder.Services.AddHttpClient<AuthApiClient>(client => client.BaseAddress = new Uri(apiBaseUrl));
+builder.Services.AddHttpClient<TransactionApiClient>(client => client.BaseAddress = new Uri(apiBaseUrl));
+builder.Services.AddHttpClient<CategoryApiClient>(client => client.BaseAddress = new Uri(apiBaseUrl));
 
 var app = builder.Build();
 

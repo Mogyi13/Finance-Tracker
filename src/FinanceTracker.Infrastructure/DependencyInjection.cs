@@ -1,7 +1,11 @@
 ﻿using FinanceTracker.Application.Common.Abstractions;
+using FinanceTracker.Application.Features.Transactions;
+using FinanceTracker.Infrastructure.Categorization;
+using FinanceTracker.Infrastructure.DerivedData;
 using FinanceTracker.Infrastructure.Authentication;
 using FinanceTracker.Infrastructure.Identity;
 using FinanceTracker.Infrastructure.Persistence;
+using FinanceTracker.Infrastructure.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -39,6 +43,12 @@ public static class DependencyInjection
         services.AddScoped<IIdentityService, IdentityService>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddSingleton<ITokenService, JwtTokenService>();
+
+        services.AddScoped<ICategoryRepository, CategoryRepository>();
+        services.AddScoped<ITransactionRepository, TransactionRepository>();
+        services.AddScoped<ITransactionQueries, TransactionQueries>();
+        services.AddScoped<ITransactionCategorizer, NoOpTransactionCategorizer>();
+        services.AddScoped<IDerivedDataInvalidator, LoggingDerivedDataInvalidator>();
 
         return services;
     }
