@@ -106,7 +106,7 @@ Responsibilities:
 4. The backend validates the submitted data.
 5. The system checks whether the email address is already registered.
 6. ASP.NET Core Identity creates the user account.
-7. The system initializes the user's default categories.
+7. The system initializes the user's seed categories.
 8. The system confirms successful registration.
 
 **Alternative Flows:**
@@ -148,7 +148,7 @@ Responsibilities:
 **Main Flow:**
 1. The user selects the logout option.
 2. The frontend clears the local authentication state and token.
-3. The user is redirected to the login page.
+3. The user is redirected to the login page. kijelentkezés a Web szerver oldali állapotának és a tárolt tokennek a törlése
 
 **Postconditions:**
 - The current frontend session is no longer authenticated.

@@ -609,12 +609,12 @@ Példa parancsok:
 
 ```bash
 dotnet ef migrations add InitialCreate \
-  --project src/SmartFinance.Infrastructure \
-  --startup-project src/SmartFinance.API
+  --project src/FinanceTracker.Infrastructure \
+  --startup-project src/FinanceTracker.API
 
 dotnet ef database update \
-  --project src/SmartFinance.Infrastructure \
-  --startup-project src/SmartFinance.API
+  --project src/FinanceTracker.Infrastructure \
+  --startup-project src/FinanceTracker.API
 ```
 
 A pontos projektbeállításokhoz a migrációk futtatásakor az Infrastructure és API projektek közötti hivatkozásokat is megfelelően konfigurálni kell.

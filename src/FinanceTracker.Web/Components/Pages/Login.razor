@@ -1,0 +1,93 @@
+﻿@page "/login"
+@using System.ComponentModel.DataAnnotations
+@inject AuthApiClient Api
+@inject JwtAuthenticationStateProvider Session
+@inject NavigationManager Navigation
+
+<PageTitle>Bejelentkezés</PageTitle>
+
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-5">
+        <h1 class="h3 mb-3">Bejelentkezés</h1>
+
+        @if (Registered)
+        {
+            <div class="alert alert-success" role="status">Sikeres regisztráció. Most már bejelentkezhetsz.</div>
+        }
+
+        @if (_errors.Count > 0)
+        {
+            <div class="alert alert-danger" role="alert">
+                <ul class="mb-0">
+                    @foreach (var error in _errors)
+                    {
+                        <li>@error</li>
+                    }
+                </ul>
+            </div>
+        }
+
+        <EditForm Model="_model" OnValidSubmit="SubmitAsync">
+            <DataAnnotationsValidator />
+
+            <div class="mb-3">
+                <label class="form-label" for="email">E-mail-cím</label>
+                <InputText id="email" class="form-control" type="email" autocomplete="email" @bind-Value="_model.Email" />
+                <ValidationMessage For="() => _model.Email" class="text-danger" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label" for="password">Jelszó</label>
+                <InputText id="password" class="form-control" type="password" autocomplete="current-password" @bind-Value="_model.Password" />
+                <ValidationMessage For="() => _model.Password" class="text-danger" />
+            </div>
+
+            <button type="submit" class="btn btn-primary" disabled="@_busy">Bejelentkezés</button>
+            <a class="btn btn-link" href="register">Regisztráció</a>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "registered")]
+    public bool Registered { get; set; }
+
+    [SupplyParameterFromQuery(Name = "returnUrl")]
+    public string? ReturnUrl { get; set; }
+
+    private readonly LoginModel _model = new();
+    private List<string> _errors = new();
+    private bool _busy;
+
+    private async Task SubmitAsync()
+    {
+        _busy = true;
+        _errors = new List<string>();
+
+        var result = await Api.LoginAsync(new LoginCommand(_model.Email.Trim(), _model.Password));
+        if (!result.IsSuccess)
+        {
+            _errors = result.Messages.ToList();
+            _busy = false;
+            return;
+        }
+
+        await Session.SignInAsync(result.Value!.AccessToken, result.Value.ExpiresAt);
+        Navigation.NavigateTo(IsLocalUrl(ReturnUrl) ? ReturnUrl! : "/");
+    }
+
+    // Csak az alkalmazáson belüli, "/"-lel kezdődő cél engedélyezett (open redirect elleni védelem).
+    private static bool IsLocalUrl(string? url)
+        => !string.IsNullOrEmpty(url)
+           && url[0] == '/'
+           && (url.Length == 1 || (url[1] != '/' && url[1] != '\\'));
+
+    private sealed class LoginModel
+    {
+        [Required(ErrorMessage = "Az e-mail-cím megadása kötelező.")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "A jelszó megadása kötelező.")]
+        public string Password { get; set; } = string.Empty;
+    }
+}

@@ -1,0 +1,99 @@
+﻿@page "/register"
+@using System.ComponentModel.DataAnnotations
+@inject AuthApiClient Api
+@inject NavigationManager Navigation
+
+<PageTitle>Regisztráció</PageTitle>
+
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-5">
+        <h1 class="h3 mb-3">Regisztráció</h1>
+
+        @if (_errors.Count > 0)
+        {
+            <div class="alert alert-danger" role="alert">
+                <ul class="mb-0">
+                    @foreach (var error in _errors)
+                    {
+                        <li>@error</li>
+                    }
+                </ul>
+            </div>
+        }
+
+        <EditForm Model="_model" OnValidSubmit="SubmitAsync">
+            <DataAnnotationsValidator />
+
+            <div class="mb-3">
+                <label class="form-label" for="email">E-mail-cím</label>
+                <InputText id="email" class="form-control" type="email" autocomplete="email" @bind-Value="_model.Email" />
+                <ValidationMessage For="() => _model.Email" class="text-danger" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label" for="displayName">Megjelenítendő név</label>
+                <InputText id="displayName" class="form-control" autocomplete="name" @bind-Value="_model.DisplayName" />
+                <ValidationMessage For="() => _model.DisplayName" class="text-danger" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label" for="password">Jelszó</label>
+                <InputText id="password" class="form-control" type="password" autocomplete="new-password" @bind-Value="_model.Password" />
+                <div class="form-text">Legalább 8 karakter, kis- és nagybetűvel, számjeggyel.</div>
+                <ValidationMessage For="() => _model.Password" class="text-danger" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label" for="confirmPassword">Jelszó megerősítése</label>
+                <InputText id="confirmPassword" class="form-control" type="password" autocomplete="new-password" @bind-Value="_model.ConfirmPassword" />
+                <ValidationMessage For="() => _model.ConfirmPassword" class="text-danger" />
+            </div>
+
+            <button type="submit" class="btn btn-primary" disabled="@_busy">Regisztráció</button>
+            <a class="btn btn-link" href="login">Már van fiókom</a>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    private readonly RegisterModel _model = new();
+    private List<string> _errors = new();
+    private bool _busy;
+
+    private async Task SubmitAsync()
+    {
+        _busy = true;
+        _errors = new List<string>();
+
+        var result = await Api.RegisterAsync(new RegisterCommand(_model.Email.Trim(), _model.DisplayName.Trim(), _model.Password));
+        if (result.IsSuccess)
+        {
+            Navigation.NavigateTo("login?registered=true");
+            return;
+        }
+
+        _errors = result.Messages.ToList();
+        _busy = false;
+    }
+
+    private sealed class RegisterModel
+    {
+        [Required(ErrorMessage = "Az e-mail-cím megadása kötelező.")]
+        [EmailAddress(ErrorMessage = "Az e-mail-cím formátuma érvénytelen.")]
+        [StringLength(256, ErrorMessage = "Az e-mail-cím legfeljebb 256 karakter lehet.")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "A megjelenítendő név megadása kötelező.")]
+        [StringLength(100, ErrorMessage = "A megjelenítendő név legfeljebb 100 karakter lehet.")]
+        public string DisplayName { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "A jelszó megadása kötelező.")]
+        [MinLength(8, ErrorMessage = "A jelszó legalább 8 karakter hosszú legyen.")]
+        [StringLength(128, ErrorMessage = "A jelszó legfeljebb 128 karakter lehet.")]
+        public string Password { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "A jelszó megerősítése kötelező.")]
+        [Compare(nameof(Password), ErrorMessage = "A két jelszó nem egyezik.")]
+        public string ConfirmPassword { get; set; } = string.Empty;
+    }
+}
