@@ -1,13 +1,14 @@
 ﻿@page "/transactions"
 @attribute [Authorize]
 @inject TransactionApiClient Api
+@inject CategoryApiClient CategoriesApi
 @inject JwtAuthenticationStateProvider Session
 @inject NavigationManager Navigation
 @inject UserDisplayState UserState
 
 <PageTitle>Tranzakciók</PageTitle>
 
-<PageHeader Title="Tranzakciók" Subtitle="Bevételeid és kiadásaid egy helyen.">
+<PageHeader Title="Tranzakciók" Subtitle="Bevételeid és kiadásaid egy helyen, szűrhetően.">
     <Actions>
         <a class="btn btn-primary" href="transactions/new"><i class="bi bi-plus-lg" aria-hidden="true"></i> Új tranzakció</a>
     </Actions>
@@ -27,6 +28,99 @@ else if (Saved == "updated")
     <StatusMessage Kind="danger">@_error</StatusMessage>
 }
 
+@if (_hasAnyTransaction || _applied.IsActive)
+{
+    <div class="ft-card filter-card">
+        <button type="button" class="filter-toggle" aria-expanded="@_filtersOpen.ToString().ToLowerInvariant()" aria-controls="filter-form" @onclick="() => _filtersOpen = !_filtersOpen">
+            <i class="bi bi-funnel" aria-hidden="true"></i>
+            <span>Szűrők</span>
+            @if (_applied.ActiveCount > 0)
+            {
+                <span class="filter-badge" title="Aktív szűrők száma">@_applied.ActiveCount</span>
+            }
+            <i class="bi @(_filtersOpen ? "bi-chevron-up" : "bi-chevron-down") ms-auto" aria-hidden="true"></i>
+        </button>
+
+        @if (_filtersOpen)
+        {
+            <EditForm id="filter-form" Model="_filter" OnValidSubmit="ApplyFilterAsync" class="filter-body">
+                <DataAnnotationsValidator />
+
+                <div class="filter-grid">
+                    <div class="filter-wide">
+                        <label class="form-label" for="f-search">Leírás tartalmazza</label>
+                        <div class="input-icon">
+                            <i class="bi bi-search" aria-hidden="true"></i>
+                            <InputText id="f-search" class="form-control" placeholder="Például: bevásárlás" @bind-Value="_filter.Search" />
+                        </div>
+                        <ValidationMessage For="() => _filter.Search" />
+                    </div>
+
+                    <div>
+                        <label class="form-label" for="f-type">Típus</label>
+                        <InputSelect id="f-type" class="form-select" @bind-Value="_filter.TypeKey">
+                            <option value="">Mind</option>
+                            <option value="Income">Bevétel</option>
+                            <option value="Expense">Kiadás</option>
+                        </InputSelect>
+                    </div>
+
+                    <div>
+                        <label class="form-label" for="f-category">Kategória</label>
+                        <InputSelect id="f-category" class="form-select" @bind-Value="_filter.CategoryKey">
+                            <option value="">Mind</option>
+                            <optgroup label="Kiadás">
+                                @foreach (var category in _categories.Where(c => c.Type == CategoryType.Expense))
+                                {
+                                    <option value="@category.Id">@category.Name</option>
+                                }
+                            </optgroup>
+                            <optgroup label="Bevétel">
+                                @foreach (var category in _categories.Where(c => c.Type == CategoryType.Income))
+                                {
+                                    <option value="@category.Id">@category.Name</option>
+                                }
+                            </optgroup>
+                        </InputSelect>
+                    </div>
+
+                    <div>
+                        <label class="form-label" for="f-from">Dátum -tól</label>
+                        <InputDate id="f-from" class="form-control" @bind-Value="_filter.DateFrom" />
+                    </div>
+
+                    <div>
+                        <label class="form-label" for="f-to">Dátum -ig</label>
+                        <InputDate id="f-to" class="form-control" @bind-Value="_filter.DateTo" />
+                        <ValidationMessage For="() => _filter.DateTo" />
+                    </div>
+
+                    <div>
+                        <label class="form-label" for="f-min">Összeg -tól</label>
+                        <InputNumber id="f-min" class="form-control" step="0.01" min="0" placeholder="0,00" @bind-Value="_filter.MinAmount" />
+                        <ValidationMessage For="() => _filter.MinAmount" />
+                    </div>
+
+                    <div>
+                        <label class="form-label" for="f-max">Összeg -ig</label>
+                        <InputNumber id="f-max" class="form-control" step="0.01" min="0" placeholder="0,00" @bind-Value="_filter.MaxAmount" />
+                        <ValidationMessage For="() => _filter.MaxAmount" />
+                    </div>
+                </div>
+
+                <div class="filter-actions">
+                    <button type="button" class="btn btn-outline-secondary" disabled="@(!_filter.IsActive && !_applied.IsActive)" @onclick="ClearFilterAsync">
+                        <i class="bi bi-x-lg" aria-hidden="true"></i> Szűrők törlése
+                    </button>
+                    <button type="submit" class="btn btn-primary" disabled="@_loading">
+                        <i class="bi bi-funnel" aria-hidden="true"></i> Szűrés
+                    </button>
+                </div>
+            </EditForm>
+        }
+    </div>
+}
+
 <div class="ft-card">
     @if (_loading && _result is null)
     {
@@ -34,7 +128,13 @@ else if (Saved == "updated")
     }
     else if (_result is not null)
     {
-        if (_result.TotalCount == 0)
+        if (_result.TotalCount == 0 && _applied.IsActive)
+        {
+            <EmptyState Icon="bi-funnel" Title="Nincs a szűrésnek megfelelő tranzakció" Text="Próbálj meg kevesebb vagy tágabb szűrőt megadni.">
+                <button type="button" class="btn btn-outline-primary" @onclick="ClearFilterAsync">Szűrők törlése</button>
+            </EmptyState>
+        }
+        else if (_result.TotalCount == 0)
         {
             <EmptyState Icon="bi-receipt" Title="Még nincs rögzített tranzakciód" Text="Vedd fel az első bevételedet vagy kiadásodat, és itt fogod látni az összes tételt.">
                 <a class="btn btn-primary" href="transactions/new"><i class="bi bi-plus-lg" aria-hidden="true"></i> Új tranzakció</a>
@@ -109,7 +209,7 @@ else if (Saved == "updated")
 
             <div class="ft-card-footer">
                 <div class="text-muted">
-                    @_result.TotalCount tranzakció · @_result.Page. oldal / @_result.TotalPages
+                    @_result.TotalCount @(_applied.IsActive ? "találat" : "tranzakció") · @_result.Page. oldal / @_result.TotalPages
                 </div>
 
                 <div class="d-flex flex-wrap align-items-center gap-3">
@@ -175,6 +275,14 @@ else if (Saved == "updated")
     private TransactionSortField _sortBy = TransactionSortField.Date;
     private SortDirection _sortDirection = SortDirection.Descending;
 
+    // UC-09: az űrlap szerkesztett állapota (_filter) és az éppen érvényes szűrő (_applied) külön él,
+    // így a lapozás és a rendezés mindig az utoljára alkalmazott szűrővel történik.
+    private TransactionFilterModel _filter = new();
+    private TransactionFilterModel _applied = new();
+    private List<CategoryDto> _categories = new();
+    private bool _filtersOpen = true;
+    private bool _hasAnyTransaction;
+
     private PagedResult<TransactionDto>? _result;
     private bool _loading = true;
     private string? _error;
@@ -182,24 +290,53 @@ else if (Saved == "updated")
     private TransactionDto? _deleteTarget;
     private bool _deleting;
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        // A kategóriák csak a szűrő választójához kellenek; hiba esetén a szűrő kategória nélkül is használható.
+        var categories = await CategoriesApi.GetAllAsync();
+        if (categories.IsSuccess)
+        {
+            _categories = categories.Value!;
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task ApplyFilterAsync()
+    {
+        _applied = _filter.Clone();
+        _page = 1;
+        await LoadAsync();
+    }
+
+    private async Task ClearFilterAsync()
+    {
+        _filter = new TransactionFilterModel();
+        _applied = new TransactionFilterModel();
+        _page = 1;
+        await LoadAsync();
+    }
 
     private async Task LoadAsync()
     {
         _loading = true;
         _error = null;
 
-        var result = await Api.GetPageAsync(new GetTransactionsQuery
-        {
-            Page = _page,
-            PageSize = _pageSize,
-            SortBy = _sortBy,
-            SortDirection = _sortDirection
-        });
+        var result = await Api.GetPageAsync(_applied.ToQuery(_page, _pageSize, _sortBy, _sortDirection));
 
         if (result.IsSuccess)
         {
             _result = result.Value;
+
+            // Szűrő nélkül a teljes lista összesítője mutatja, hogy van-e egyáltalán tranzakció (a szűrőpanel megjelenítéséhez).
+            if (!_applied.IsActive)
+            {
+                _hasAnyTransaction = _result!.TotalCount > 0;
+            }
+            else if (_result!.TotalCount > 0)
+            {
+                _hasAnyTransaction = true;
+            }
 
             // Ha az utolsó oldal kiürült (például törlés után), visszalépünk az új utolsó oldalra.
             if (_result!.Items.Count == 0 && _result.TotalCount > 0 && _page > 1)

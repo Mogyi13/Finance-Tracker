@@ -1,6 +1,11 @@
 ﻿using FinanceTracker.Application.Features.Authentication.Login;
 using FinanceTracker.Application.Features.Authentication.Register;
+using FinanceTracker.Application.Features.Categories.CreateCategory;
+using FinanceTracker.Application.Features.Categories.DeleteCategory;
 using FinanceTracker.Application.Features.Categories.GetCategories;
+using FinanceTracker.Application.Features.Categories.UpdateCategory;
+using FinanceTracker.Application.Features.Imports.ImportCsv;
+using FinanceTracker.Application.Features.Imports.PreviewImport;
 using FinanceTracker.Application.Features.Profile.GetProfile;
 using FinanceTracker.Application.Features.Profile.UpdateProfile;
 using FinanceTracker.Application.Features.Transactions.CreateTransaction;
@@ -25,12 +30,18 @@ public static class DependencyInjection
         services.AddScoped<UpdateProfileHandler>();
 
         services.AddScoped<GetCategoriesHandler>();
+        services.AddScoped<CreateCategoryHandler>();
+        services.AddScoped<UpdateCategoryHandler>();
+        services.AddScoped<DeleteCategoryHandler>();
 
         services.AddScoped<CreateTransactionHandler>();
         services.AddScoped<GetTransactionsHandler>();
         services.AddScoped<GetTransactionHandler>();
         services.AddScoped<UpdateTransactionHandler>();
         services.AddScoped<DeleteTransactionHandler>();
+
+        services.AddScoped<PreviewImportHandler>();
+        services.AddScoped<ImportCsvHandler>();
         return services;
     }
 }

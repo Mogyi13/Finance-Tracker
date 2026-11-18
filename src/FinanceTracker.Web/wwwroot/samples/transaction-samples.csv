@@ -1,0 +1,14 @@
+﻿Dátum;Összeg;Leírás;Típus;Pénznem;Kategória
+2026-11-02;520000;Novemberi fizetés;bevétel;HUF;Fizetés
+2026-11-03;38400;Heti bevásárlás;kiadás;HUF;Élelmiszer
+2026-11-05;-180000;Albérlet;kiadás;HUF;Lakhatás
+2026-11-06;-4200;Mozijegy;kiadás;HUF;Szórakozás
+2026-11-08;-12900;Havi bérlet;kiadás;HUF;Közlekedés
+2026-11-08;-12900;Havi bérlet;kiadás;HUF;Közlekedés
+2026-11-10;-9500;Gyógyszertár;kiadás;HUF;Egészség
+2026-11-12;45000;Szabadúszó munka;bevétel;HUF;Egyéb bevétel
+2026-11-14;-2490;Streaming előfizetés;kiadás;HUF;
+2026-11-15;nem összeg;Hibás összeg példa;kiadás;HUF;
+2026-11-16;-3200;;kiadás;HUF;
+rossz-datum;-1500;Hibás dátum példa;kiadás;HUF;
+2026-11-18;-1500;Ismeretlen kategória példa;kiadás;HUF;Nemlétező

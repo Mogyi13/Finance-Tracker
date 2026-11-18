@@ -1,4 +1,5 @@
 ﻿using FinanceTracker.Application.Common.Abstractions;
+using FinanceTracker.Application.Features.Imports;
 using FinanceTracker.Application.Features.Transactions;
 using FinanceTracker.Infrastructure.Categorization;
 using FinanceTracker.Infrastructure.DerivedData;
@@ -47,6 +48,7 @@ public static class DependencyInjection
         services.AddScoped<ICategoryRepository, CategoryRepository>();
         services.AddScoped<ITransactionRepository, TransactionRepository>();
         services.AddScoped<ITransactionQueries, TransactionQueries>();
+        services.AddScoped<IImportRepository, ImportRepository>();
         services.AddScoped<ITransactionCategorizer, NoOpTransactionCategorizer>();
         services.AddScoped<IDerivedDataInvalidator, LoggingDerivedDataInvalidator>();
 

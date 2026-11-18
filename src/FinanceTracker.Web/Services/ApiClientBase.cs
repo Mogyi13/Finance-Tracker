@@ -26,6 +26,16 @@ public abstract class ApiClientBase(HttpClient http, JwtAuthenticationStateProvi
                 : ApiResult<T>.Success(value, response.StatusCode);
         });
 
+    /// <summary>Hívás előre elkészített tartalommal (például fájlfeltöltés multipart/form-data űrlappal).</summary>
+    protected Task<ApiResult<T>> SendContentAsync<T>(HttpMethod method, string url, HttpContent content)
+        => ExecuteAsync<T>(method, url, null, true, async response =>
+        {
+            var value = await response.Content.ReadFromJsonAsync<T>(Json);
+            return value is null
+                ? ApiResult<T>.Failure(response.StatusCode, "Az API üres választ adott.")
+                : ApiResult<T>.Success(value, response.StatusCode);
+        }, content);
+
     /// <summary>Olyan hívás, amelynek sikeres válasza nem tartalmaz törzset (például 204 törlésnél).</summary>
     protected Task<ApiResult<bool>> SendNoContentAsync(HttpMethod method, string url, bool authorize = true)
         => ExecuteAsync<bool>(method, url, null, authorize,
@@ -36,13 +46,18 @@ public abstract class ApiClientBase(HttpClient http, JwtAuthenticationStateProvi
         string url,
         object? body,
         bool authorize,
-        Func<HttpResponseMessage, Task<ApiResult<T>>> onSuccess)
+        Func<HttpResponseMessage, Task<ApiResult<T>>> onSuccess,
+        HttpContent? content = null)
     {
         try
         {
             using var request = new HttpRequestMessage(method, url);
 
-            if (body is not null)
+            if (content is not null)
+            {
+                request.Content = content;
+            }
+            else if (body is not null)
             {
                 request.Content = JsonContent.Create(body, body.GetType(), options: Json);
             }
@@ -90,6 +105,9 @@ public abstract class ApiClientBase(HttpClient http, JwtAuthenticationStateProvi
         {
             HttpStatusCode.Unauthorized => "A művelethez bejelentkezés szükséges.",
             HttpStatusCode.NotFound => "A kért elem nem található.",
+            HttpStatusCode.Forbidden => "A művelet nem engedélyezett.",
+            HttpStatusCode.Conflict => "A művelet ütközik a rendszer jelenlegi állapotával.",
+            HttpStatusCode.RequestEntityTooLarge => "A fájl túl nagy.",
             _ => "Ismeretlen hiba történt."
         };
         var message = problem?.Detail ?? problem?.Title ?? fallback;
