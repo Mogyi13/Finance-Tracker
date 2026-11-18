@@ -1,64 +1,78 @@
 ﻿@page "/register"
+@layout AuthLayout
 @using System.ComponentModel.DataAnnotations
 @inject AuthApiClient Api
 @inject NavigationManager Navigation
 
 <PageTitle>Regisztráció</PageTitle>
 
-<div class="row justify-content-center">
-    <div class="col-md-8 col-lg-5">
-        <h1 class="h3 mb-3">Regisztráció</h1>
+<h1>Fiók létrehozása</h1>
+<p class="auth-sub">Pár adat, és már rögzítheted is az első tranzakciódat.</p>
 
-        @if (_errors.Count > 0)
-        {
-            <div class="alert alert-danger" role="alert">
-                <ul class="mb-0">
-                    @foreach (var error in _errors)
-                    {
-                        <li>@error</li>
-                    }
-                </ul>
-            </div>
-        }
+@if (_errors.Count > 0)
+{
+    <StatusMessage Kind="danger" Messages="_errors" />
+}
 
-        <EditForm Model="_model" OnValidSubmit="SubmitAsync">
-            <DataAnnotationsValidator />
+<EditForm Model="_model" OnValidSubmit="SubmitAsync">
+    <DataAnnotationsValidator />
 
-            <div class="mb-3">
-                <label class="form-label" for="email">E-mail-cím</label>
-                <InputText id="email" class="form-control" type="email" autocomplete="email" @bind-Value="_model.Email" />
-                <ValidationMessage For="() => _model.Email" class="text-danger" />
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label" for="displayName">Megjelenítendő név</label>
-                <InputText id="displayName" class="form-control" autocomplete="name" @bind-Value="_model.DisplayName" />
-                <ValidationMessage For="() => _model.DisplayName" class="text-danger" />
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label" for="password">Jelszó</label>
-                <InputText id="password" class="form-control" type="password" autocomplete="new-password" @bind-Value="_model.Password" />
-                <div class="form-text">Legalább 8 karakter, kis- és nagybetűvel, számjeggyel.</div>
-                <ValidationMessage For="() => _model.Password" class="text-danger" />
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label" for="confirmPassword">Jelszó megerősítése</label>
-                <InputText id="confirmPassword" class="form-control" type="password" autocomplete="new-password" @bind-Value="_model.ConfirmPassword" />
-                <ValidationMessage For="() => _model.ConfirmPassword" class="text-danger" />
-            </div>
-
-            <button type="submit" class="btn btn-primary" disabled="@_busy">Regisztráció</button>
-            <a class="btn btn-link" href="login">Már van fiókom</a>
-        </EditForm>
+    <div class="mb-3">
+        <label class="form-label" for="email">E-mail-cím</label>
+        <div class="input-icon">
+            <i class="bi bi-envelope" aria-hidden="true"></i>
+            <InputText id="email" class="form-control" type="email" autocomplete="email" placeholder="nev@pelda.hu" @bind-Value="_model.Email" />
+        </div>
+        <ValidationMessage For="() => _model.Email" />
     </div>
-</div>
+
+    <div class="mb-3">
+        <label class="form-label" for="displayName">Megjelenítendő név</label>
+        <div class="input-icon">
+            <i class="bi bi-person" aria-hidden="true"></i>
+            <InputText id="displayName" class="form-control" autocomplete="name" placeholder="Kovács Anna" @bind-Value="_model.DisplayName" />
+        </div>
+        <ValidationMessage For="() => _model.DisplayName" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label" for="password">Jelszó</label>
+        <div class="input-icon has-toggle">
+            <i class="bi bi-lock" aria-hidden="true"></i>
+            <InputText id="password" class="form-control" type="@(_showPassword ? "text" : "password")" autocomplete="new-password" @bind-Value="_model.Password" />
+            <button type="button" class="icon-btn toggle-visibility" aria-label="@(_showPassword ? "Jelszó elrejtése" : "Jelszó megjelenítése")" @onclick="() => _showPassword = !_showPassword">
+                <i class="bi @(_showPassword ? "bi-eye-slash" : "bi-eye")" aria-hidden="true"></i>
+            </button>
+        </div>
+        <div class="form-text">Legalább 8 karakter, kis- és nagybetűvel, számjeggyel.</div>
+        <ValidationMessage For="() => _model.Password" />
+    </div>
+
+    <div class="mb-4">
+        <label class="form-label" for="confirmPassword">Jelszó megerősítése</label>
+        <div class="input-icon">
+            <i class="bi bi-shield-lock" aria-hidden="true"></i>
+            <InputText id="confirmPassword" class="form-control" type="@(_showPassword ? "text" : "password")" autocomplete="new-password" @bind-Value="_model.ConfirmPassword" />
+        </div>
+        <ValidationMessage For="() => _model.ConfirmPassword" />
+    </div>
+
+    <button type="submit" class="btn btn-primary btn-lg w-100" disabled="@_busy">
+        @if (_busy)
+        {
+            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+        }
+        Regisztráció
+    </button>
+</EditForm>
+
+<p class="auth-alt">Már van fiókod? <a href="login">Bejelentkezés</a></p>
 
 @code {
     private readonly RegisterModel _model = new();
     private List<string> _errors = new();
     private bool _busy;
+    private bool _showPassword;
 
     private async Task SubmitAsync()
     {

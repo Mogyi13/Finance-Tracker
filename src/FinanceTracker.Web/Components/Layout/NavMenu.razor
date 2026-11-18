@@ -1,32 +1,29 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">Finance Tracker</a>
-    </div>
+﻿<a class="brand" href="">
+    <BrandMark />
+    <span>Finance Tracker</span>
+</a>
+
+<div class="side-cta">
+    <a class="btn btn-primary" href="transactions/new">
+        <i class="bi bi-plus-lg" aria-hidden="true"></i> Új tranzakció
+    </a>
 </div>
 
-<input type="checkbox" title="Navigációs menü" class="navbar-toggler" />
+<nav class="side-nav" aria-label="Főmenü">
+    <div class="side-section">Áttekintés</div>
+    <NavLink class="side-link" href="" Match="NavLinkMatch.All">
+        <i class="bi bi-grid-1x2" aria-hidden="true"></i> Kezdőlap
+    </NavLink>
 
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
-    <nav class="nav flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Kezdőlap
-            </NavLink>
-        </div>
+    <div class="side-section">Pénzügyek</div>
+    <NavLink class="side-link" href="transactions">
+        <i class="bi bi-receipt" aria-hidden="true"></i> Tranzakciók
+    </NavLink>
 
-        <AuthorizeView>
-            <Authorized>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="transactions">
-                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Tranzakciók
-                    </NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="profile">
-                        <span class="bi bi-person-fill-nav-menu" aria-hidden="true"></span> Profil
-                    </NavLink>
-                </div>
-            </Authorized>
-        </AuthorizeView>
-    </nav>
-</div>
+    <div class="side-section">Fiók</div>
+    <NavLink class="side-link" href="profile">
+        <i class="bi bi-person" aria-hidden="true"></i> Profil
+    </NavLink>
+</nav>
+
+<div class="side-footer">Finance Tracker · Demo verzió</div>

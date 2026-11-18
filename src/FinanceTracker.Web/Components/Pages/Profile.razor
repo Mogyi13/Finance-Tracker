@@ -4,38 +4,40 @@
 @inject AuthApiClient Api
 @inject JwtAuthenticationStateProvider Session
 @inject NavigationManager Navigation
+@inject UserDisplayState UserState
 
 <PageTitle>Profil</PageTitle>
 
-<div class="row">
-    <div class="col-md-8 col-lg-5">
-        <h1 class="h3 mb-3">Profil</h1>
+<PageHeader Title="Profil" Subtitle="A fiókod adatai és a megjelenített neved." />
 
-        @if (_loading)
-        {
-            <p>Betöltés…</p>
-        }
-        else if (_user is null)
-        {
-            <div class="alert alert-danger" role="alert">@(_errors.FirstOrDefault() ?? "A profil nem tölthető be.")</div>
-        }
-        else
-        {
-            if (_saved)
+@if (_loading)
+{
+    <LoadingState />
+}
+else if (_user is null)
+{
+    <StatusMessage Kind="danger">@(_errors.FirstOrDefault() ?? "A profil nem tölthető be.")</StatusMessage>
+}
+else
+{
+    <div class="ft-card" style="max-width: 640px;">
+        <div class="ft-card-body">
+            <div class="profile-head">
+                <UserAvatar Name="@_user.DisplayName" Large="true" />
+                <div>
+                    <h2>@_user.DisplayName</h2>
+                    <p>@_user.Email</p>
+                </div>
+            </div>
+
+            @if (_saved)
             {
-                <div class="alert alert-success" role="status">A profil módosítása sikeres.</div>
+                <StatusMessage Kind="success">A profil módosítása sikeres.</StatusMessage>
             }
 
-            if (_errors.Count > 0)
+            @if (_errors.Count > 0)
             {
-                <div class="alert alert-danger" role="alert">
-                    <ul class="mb-0">
-                        @foreach (var error in _errors)
-                        {
-                            <li>@error</li>
-                        }
-                    </ul>
-                </div>
+                <StatusMessage Kind="danger" Messages="_errors" />
             }
 
             <EditForm Model="_model" OnValidSubmit="SaveAsync">
@@ -49,16 +51,25 @@
                 <div class="mb-3">
                     <label class="form-label" for="displayName">Megjelenítendő név</label>
                     <InputText id="displayName" class="form-control" @bind-Value="_model.DisplayName" />
-                    <ValidationMessage For="() => _model.DisplayName" class="text-danger" />
+                    <ValidationMessage For="() => _model.DisplayName" />
                 </div>
 
-                <div class="mb-3 text-muted">Regisztráció: @_user.CreatedAt.ToLocalTime().ToString("yyyy. MM. dd. HH:mm")</div>
+                <p class="text-muted mb-4">
+                    <i class="bi bi-calendar-check me-1" aria-hidden="true"></i>
+                    Regisztráció: @_user.CreatedAt.ToLocalTime().ToString("yyyy. MM. dd. HH:mm", TransactionFormat.Hu)
+                </p>
 
-                <button type="submit" class="btn btn-primary" disabled="@_busy">Mentés</button>
+                <button type="submit" class="btn btn-primary" disabled="@_busy">
+                    @if (_busy)
+                    {
+                        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                    }
+                    Mentés
+                </button>
             </EditForm>
-        }
+        </div>
     </div>
-</div>
+}
 
 @code {
     private readonly ProfileModel _model = new();
@@ -75,6 +86,7 @@
         {
             _user = result.Value;
             _model.DisplayName = _user!.DisplayName;
+            UserState.Set(_user.DisplayName);
         }
         else if (result.IsUnauthorized)
         {
@@ -100,6 +112,7 @@
         {
             _user = result.Value;
             _model.DisplayName = _user!.DisplayName;
+            UserState.Set(_user.DisplayName);
             _saved = true;
         }
         else if (result.IsUnauthorized)
@@ -117,6 +130,7 @@
 
     private async Task SignOutAndRedirectAsync()
     {
+        UserState.Set(null);
         await Session.SignOutAsync();
         Navigation.NavigateTo("login");
     }

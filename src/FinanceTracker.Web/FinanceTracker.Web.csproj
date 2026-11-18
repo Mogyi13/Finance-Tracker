@@ -16,5 +16,10 @@
     <ItemGroup>
 		<ProjectReference Include="..\FinanceTracker.Application\FinanceTracker.Application.csproj" />
 	</ItemGroup>
+	
+    <ItemGroup>
+      <Folder Include="wwwroot\fonts\" />
+      <Folder Include="wwwroot\lib\bootstrap-icons\fonts\" />
+    </ItemGroup>
 
 </Project>
