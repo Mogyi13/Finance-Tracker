@@ -1,0 +1,202 @@
+﻿@page "/transactions/new"
+@page "/transactions/{Id:guid}/edit"
+@attribute [Authorize]
+@inject TransactionApiClient TransactionsApi
+@inject CategoryApiClient CategoriesApi
+@inject JwtAuthenticationStateProvider Session
+@inject NavigationManager Navigation
+
+<PageTitle>@(IsEdit ? "Tranzakció szerkesztése" : "Új tranzakció")</PageTitle>
+
+<div class="row">
+    <div class="col-md-8 col-lg-6">
+        <h1 class="h3 mb-3">@(IsEdit ? "Tranzakció szerkesztése" : "Új tranzakció")</h1>
+
+        @if (_errors.Count > 0)
+        {
+            <div class="alert alert-danger" role="alert">
+                <ul class="mb-0">
+                    @foreach (var error in _errors)
+                    {
+                        <li>@error</li>
+                    }
+                </ul>
+            </div>
+        }
+
+        @if (_loading)
+        {
+            <p>Betöltés…</p>
+        }
+        else if (!_notFound)
+        {
+            <EditForm Model="_model" OnValidSubmit="SubmitAsync">
+                <DataAnnotationsValidator />
+
+                <div class="mb-3">
+                    <span class="form-label d-block">Típus</span>
+                    <InputRadioGroup @bind-Value="_model.Type" @bind-Value:after="OnTypeChanged">
+                        <div class="form-check form-check-inline">
+                            <InputRadio class="form-check-input" id="type-expense" Value="TransactionType.Expense" />
+                            <label class="form-check-label" for="type-expense">Kiadás</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <InputRadio class="form-check-input" id="type-income" Value="TransactionType.Income" />
+                            <label class="form-check-label" for="type-income">Bevétel</label>
+                        </div>
+                    </InputRadioGroup>
+                </div>
+
+                <div class="row">
+                    <div class="col-7 mb-3">
+                        <label class="form-label" for="amount">Összeg</label>
+                        <InputNumber id="amount" class="form-control" step="0.01" min="0" @bind-Value="_model.Amount" />
+                        <ValidationMessage For="() => _model.Amount" class="text-danger" />
+                    </div>
+                    <div class="col-5 mb-3">
+                        <label class="form-label" for="currency">Pénznem</label>
+                        <InputSelect id="currency" class="form-select" @bind-Value="_model.Currency">
+                            @foreach (var currency in SupportedCurrencies.All)
+                            {
+                                <option value="@currency">@currency</option>
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="() => _model.Currency" class="text-danger" />
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label" for="date">Dátum</label>
+                    <InputDate id="date" class="form-control" @bind-Value="_model.TransactionDate" />
+                    <ValidationMessage For="() => _model.TransactionDate" class="text-danger" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label" for="description">Leírás</label>
+                    <InputTextArea id="description" class="form-control" rows="2" @bind-Value="_model.Description" />
+                    <ValidationMessage For="() => _model.Description" class="text-danger" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label" for="category">Kategória</label>
+                    <InputSelect id="category" class="form-select" @bind-Value="_model.CategoryKey">
+                        <option value="">Nincs kiválasztva</option>
+                        @foreach (var category in CategoriesForSelectedType)
+                        {
+                            <option value="@category.Id">@category.Name</option>
+                        }
+                    </InputSelect>
+                    <div class="form-text">Csak a tranzakció típusának megfelelő kategóriák választhatók.</div>
+                </div>
+
+                <button type="submit" class="btn btn-primary" disabled="@_busy">Mentés</button>
+                <a class="btn btn-link" href="transactions">Mégse</a>
+            </EditForm>
+        }
+        else
+        {
+            <a class="btn btn-secondary" href="transactions">Vissza a listához</a>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private TransactionFormModel _model = new();
+    private List<CategoryDto> _categories = new();
+    private List<string> _errors = new();
+    private bool _loading = true;
+    private bool _busy;
+    private bool _notFound;
+
+    private bool IsEdit => Id != Guid.Empty;
+
+    private IEnumerable<CategoryDto> CategoriesForSelectedType
+        => _categories.Where(c => (byte)c.Type == (byte)_model.Type);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var categories = await CategoriesApi.GetAllAsync();
+        if (categories.IsUnauthorized)
+        {
+            await SignOutAsync();
+            return;
+        }
+
+        if (categories.IsSuccess)
+        {
+            _categories = categories.Value!;
+        }
+        else
+        {
+            _errors = categories.Messages.ToList();
+        }
+
+        if (IsEdit)
+        {
+            var existing = await TransactionsApi.GetAsync(Id);
+            if (existing.IsSuccess)
+            {
+                _model = TransactionFormModel.From(existing.Value!);
+            }
+            else if (existing.IsUnauthorized)
+            {
+                await SignOutAsync();
+                return;
+            }
+            else
+            {
+                _notFound = true;
+                _errors = existing.Messages.ToList();
+            }
+        }
+        else
+        {
+            _model.TransactionDate = DateOnly.FromDateTime(DateTime.Today);
+        }
+
+        _loading = false;
+    }
+
+    // Típusváltáskor a már nem megfelelő típusú kategória kiválasztása törlődik.
+    private void OnTypeChanged()
+    {
+        if (_model.CategoryId is { } selected && !CategoriesForSelectedType.Any(c => c.Id == selected))
+        {
+            _model.CategoryKey = string.Empty;
+        }
+    }
+
+    private async Task SubmitAsync()
+    {
+        _busy = true;
+        _errors = new List<string>();
+
+        var result = IsEdit
+            ? await TransactionsApi.UpdateAsync(Id, _model.ToUpdateCommand())
+            : await TransactionsApi.CreateAsync(_model.ToCreateCommand());
+
+        if (result.IsSuccess)
+        {
+            Navigation.NavigateTo($"transactions?saved={(IsEdit ? "updated" : "created")}");
+            return;
+        }
+
+        if (result.IsUnauthorized)
+        {
+            await SignOutAsync();
+            return;
+        }
+
+        _errors = result.Messages.ToList();
+        _busy = false;
+    }
+
+    private async Task SignOutAsync()
+    {
+        await Session.SignOutAsync();
+        Navigation.NavigateTo("login");
+    }
+}

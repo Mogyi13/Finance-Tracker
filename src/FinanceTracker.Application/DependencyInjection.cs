@@ -1,7 +1,13 @@
 ﻿using FinanceTracker.Application.Features.Authentication.Login;
 using FinanceTracker.Application.Features.Authentication.Register;
+using FinanceTracker.Application.Features.Categories.GetCategories;
 using FinanceTracker.Application.Features.Profile.GetProfile;
 using FinanceTracker.Application.Features.Profile.UpdateProfile;
+using FinanceTracker.Application.Features.Transactions.CreateTransaction;
+using FinanceTracker.Application.Features.Transactions.DeleteTransaction;
+using FinanceTracker.Application.Features.Transactions.GetTransaction;
+using FinanceTracker.Application.Features.Transactions.GetTransactions;
+using FinanceTracker.Application.Features.Transactions.UpdateTransaction;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -17,6 +23,14 @@ public static class DependencyInjection
         services.AddScoped<LoginHandler>();
         services.AddScoped<GetProfileHandler>();
         services.AddScoped<UpdateProfileHandler>();
+
+        services.AddScoped<GetCategoriesHandler>();
+
+        services.AddScoped<CreateTransactionHandler>();
+        services.AddScoped<GetTransactionsHandler>();
+        services.AddScoped<GetTransactionHandler>();
+        services.AddScoped<UpdateTransactionHandler>();
+        services.AddScoped<DeleteTransactionHandler>();
         return services;
     }
 }

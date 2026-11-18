@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json.Serialization;
 using FinanceTracker.API.Infrastructure;
 using FinanceTracker.Application;
 using FinanceTracker.Application.Common.Abstractions;
@@ -18,7 +19,12 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        // Az enumok névvel (például "Income") szerepelnek a JSON-ban, a Web is így használja őket.
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddOpenApi();
