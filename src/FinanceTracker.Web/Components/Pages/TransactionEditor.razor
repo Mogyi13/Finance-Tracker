@@ -5,44 +5,40 @@
 @inject CategoryApiClient CategoriesApi
 @inject JwtAuthenticationStateProvider Session
 @inject NavigationManager Navigation
+@inject UserDisplayState UserState
 
 <PageTitle>@(IsEdit ? "Tranzakció szerkesztése" : "Új tranzakció")</PageTitle>
 
-<div class="row">
-    <div class="col-md-8 col-lg-6">
-        <h1 class="h3 mb-3">@(IsEdit ? "Tranzakció szerkesztése" : "Új tranzakció")</h1>
+<PageHeader Title="@(IsEdit ? "Tranzakció szerkesztése" : "Új tranzakció")" Subtitle="@(IsEdit ? "Módosítsd a tranzakció adatait." : "Rögzíts egy új bevételt vagy kiadást.")">
+    <Actions>
+        <a class="btn btn-outline-secondary" href="transactions"><i class="bi bi-arrow-left" aria-hidden="true"></i> Vissza a listához</a>
+    </Actions>
+</PageHeader>
 
-        @if (_errors.Count > 0)
-        {
-            <div class="alert alert-danger" role="alert">
-                <ul class="mb-0">
-                    @foreach (var error in _errors)
-                    {
-                        <li>@error</li>
-                    }
-                </ul>
-            </div>
-        }
+@if (_errors.Count > 0)
+{
+    <StatusMessage Kind="danger" Messages="_errors" />
+}
 
-        @if (_loading)
-        {
-            <p>Betöltés…</p>
-        }
-        else if (!_notFound)
-        {
-            <EditForm Model="_model" OnValidSubmit="SubmitAsync">
-                <DataAnnotationsValidator />
+@if (_loading)
+{
+    <div class="ft-card"><LoadingState /></div>
+}
+else if (!_notFound)
+{
+    <EditForm Model="_model" OnValidSubmit="SubmitAsync">
+        <DataAnnotationsValidator />
 
-                <div class="mb-3">
+        <div class="ft-card" style="max-width: 720px;">
+            <div class="ft-card-body">
+                <div class="mb-4">
                     <span class="form-label d-block">Típus</span>
                     <InputRadioGroup @bind-Value="_model.Type" @bind-Value:after="OnTypeChanged">
-                        <div class="form-check form-check-inline">
-                            <InputRadio class="form-check-input" id="type-expense" Value="TransactionType.Expense" />
-                            <label class="form-check-label" for="type-expense">Kiadás</label>
-                        </div>
-                        <div class="form-check form-check-inline">
-                            <InputRadio class="form-check-input" id="type-income" Value="TransactionType.Income" />
-                            <label class="form-check-label" for="type-income">Bevétel</label>
+                        <div class="segmented" role="group" aria-label="Tranzakció típusa">
+                            <InputRadio class="btn-check" id="type-expense" Value="TransactionType.Expense" />
+                            <label class="seg-option seg-expense" for="type-expense"><i class="bi bi-arrow-up-right" aria-hidden="true"></i> Kiadás</label>
+                            <InputRadio class="btn-check" id="type-income" Value="TransactionType.Income" />
+                            <label class="seg-option seg-income" for="type-income"><i class="bi bi-arrow-down-left" aria-hidden="true"></i> Bevétel</label>
                         </div>
                     </InputRadioGroup>
                 </div>
@@ -50,8 +46,8 @@
                 <div class="row">
                     <div class="col-7 mb-3">
                         <label class="form-label" for="amount">Összeg</label>
-                        <InputNumber id="amount" class="form-control" step="0.01" min="0" @bind-Value="_model.Amount" />
-                        <ValidationMessage For="() => _model.Amount" class="text-danger" />
+                        <InputNumber id="amount" class="form-control" step="0.01" min="0" placeholder="0,00" @bind-Value="_model.Amount" />
+                        <ValidationMessage For="() => _model.Amount" />
                     </div>
                     <div class="col-5 mb-3">
                         <label class="form-label" for="currency">Pénznem</label>
@@ -61,44 +57,49 @@
                                 <option value="@currency">@currency</option>
                             }
                         </InputSelect>
-                        <ValidationMessage For="() => _model.Currency" class="text-danger" />
+                        <ValidationMessage For="() => _model.Currency" />
                     </div>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label" for="date">Dátum</label>
-                    <InputDate id="date" class="form-control" @bind-Value="_model.TransactionDate" />
-                    <ValidationMessage For="() => _model.TransactionDate" class="text-danger" />
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label" for="date">Dátum</label>
+                        <InputDate id="date" class="form-control" @bind-Value="_model.TransactionDate" />
+                        <ValidationMessage For="() => _model.TransactionDate" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label" for="category">Kategória</label>
+                        <InputSelect id="category" class="form-select" @bind-Value="_model.CategoryKey">
+                            <option value="">Nincs kiválasztva</option>
+                            @foreach (var category in CategoriesForSelectedType)
+                            {
+                                <option value="@category.Id">@category.Name</option>
+                            }
+                        </InputSelect>
+                    </div>
                 </div>
+                <div class="form-text mb-3">Csak a tranzakció típusának megfelelő kategóriák választhatók.</div>
 
-                <div class="mb-3">
+                <div class="mb-1">
                     <label class="form-label" for="description">Leírás</label>
-                    <InputTextArea id="description" class="form-control" rows="2" @bind-Value="_model.Description" />
-                    <ValidationMessage For="() => _model.Description" class="text-danger" />
+                    <InputTextArea id="description" class="form-control" rows="3" placeholder="Például: heti bevásárlás" @bind-Value="_model.Description" />
+                    <ValidationMessage For="() => _model.Description" />
                 </div>
+            </div>
 
-                <div class="mb-3">
-                    <label class="form-label" for="category">Kategória</label>
-                    <InputSelect id="category" class="form-select" @bind-Value="_model.CategoryKey">
-                        <option value="">Nincs kiválasztva</option>
-                        @foreach (var category in CategoriesForSelectedType)
-                        {
-                            <option value="@category.Id">@category.Name</option>
-                        }
-                    </InputSelect>
-                    <div class="form-text">Csak a tranzakció típusának megfelelő kategóriák választhatók.</div>
-                </div>
-
-                <button type="submit" class="btn btn-primary" disabled="@_busy">Mentés</button>
-                <a class="btn btn-link" href="transactions">Mégse</a>
-            </EditForm>
-        }
-        else
-        {
-            <a class="btn btn-secondary" href="transactions">Vissza a listához</a>
-        }
-    </div>
-</div>
+            <div class="ft-card-footer justify-content-end">
+                <a class="btn btn-outline-secondary" href="transactions">Mégse</a>
+                <button type="submit" class="btn btn-primary" disabled="@_busy">
+                    @if (_busy)
+                    {
+                        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                    }
+                    Mentés
+                </button>
+            </div>
+        </div>
+    </EditForm>
+}
 
 @code {
     [Parameter]
@@ -196,6 +197,7 @@
 
     private async Task SignOutAsync()
     {
+        UserState.Set(null);
         await Session.SignOutAsync();
         Navigation.NavigateTo("login");
     }

@@ -1,0 +1,42 @@
+﻿@inherits LayoutComponentBase
+
+<div class="auth-shell">
+    <section class="auth-brand">
+        <a class="brand" href="">
+            <BrandMark Size="38" />
+            <span>Finance Tracker</span>
+        </a>
+
+        <div>
+            <h2>Pénzügyeid, átláthatóan, egy helyen.</h2>
+            <p class="lead">Rögzítsd a bevételeidet és kiadásaidat, kategorizáld őket, és kövesd, hová megy a pénzed.</p>
+
+            <ul class="auth-points">
+                <li>
+                    <i class="bi bi-receipt" aria-hidden="true"></i>
+                    <div><strong>Gyors rögzítés</strong><span>Tranzakciók felvétele néhány kattintással.</span></div>
+                </li>
+                <li>
+                    <i class="bi bi-tags" aria-hidden="true"></i>
+                    <div><strong>Kategóriák</strong><span>Rendszerezett kiadások és bevételek.</span></div>
+                </li>
+                <li>
+                    <i class="bi bi-shield-check" aria-hidden="true"></i>
+                    <div><strong>Biztonságos hozzáférés</strong><span>Saját fiók, JWT alapú hitelesítés.</span></div>
+                </li>
+            </ul>
+        </div>
+
+        <div class="auth-foot">© @DateTime.Now.Year Finance Tracker · Demo verzió</div>
+    </section>
+
+    <section class="auth-panel">
+        <div class="auth-card">
+            <a class="brand brand-dark auth-mobile-brand" href="">
+                <BrandMark />
+                <span>Finance Tracker</span>
+            </a>
+            @Body
+        </div>
+    </section>
+</div>

@@ -2,7 +2,7 @@
     <Found Context="routeData">
         <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
             <Authorizing>
-                <p class="p-3">Betöltés…</p>
+                <div class="splash"><LoadingState /></div>
             </Authorizing>
             <NotAuthorized>
                 <RedirectToLogin />

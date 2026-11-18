@@ -1,4 +1,5 @@
 ﻿@page "/login"
+@layout AuthLayout
 @using System.ComponentModel.DataAnnotations
 @inject AuthApiClient Api
 @inject JwtAuthenticationStateProvider Session
@@ -6,47 +7,53 @@
 
 <PageTitle>Bejelentkezés</PageTitle>
 
-<div class="row justify-content-center">
-    <div class="col-md-8 col-lg-5">
-        <h1 class="h3 mb-3">Bejelentkezés</h1>
+<h1>Üdv újra!</h1>
+<p class="auth-sub">Jelentkezz be a fiókodba a folytatáshoz.</p>
 
-        @if (Registered)
-        {
-            <div class="alert alert-success" role="status">Sikeres regisztráció. Most már bejelentkezhetsz.</div>
-        }
+@if (Registered)
+{
+    <StatusMessage Kind="success">Sikeres regisztráció. Most már bejelentkezhetsz.</StatusMessage>
+}
 
-        @if (_errors.Count > 0)
-        {
-            <div class="alert alert-danger" role="alert">
-                <ul class="mb-0">
-                    @foreach (var error in _errors)
-                    {
-                        <li>@error</li>
-                    }
-                </ul>
-            </div>
-        }
+@if (_errors.Count > 0)
+{
+    <StatusMessage Kind="danger" Messages="_errors" />
+}
 
-        <EditForm Model="_model" OnValidSubmit="SubmitAsync">
-            <DataAnnotationsValidator />
+<EditForm Model="_model" OnValidSubmit="SubmitAsync">
+    <DataAnnotationsValidator />
 
-            <div class="mb-3">
-                <label class="form-label" for="email">E-mail-cím</label>
-                <InputText id="email" class="form-control" type="email" autocomplete="email" @bind-Value="_model.Email" />
-                <ValidationMessage For="() => _model.Email" class="text-danger" />
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label" for="password">Jelszó</label>
-                <InputText id="password" class="form-control" type="password" autocomplete="current-password" @bind-Value="_model.Password" />
-                <ValidationMessage For="() => _model.Password" class="text-danger" />
-            </div>
-
-            <button type="submit" class="btn btn-primary" disabled="@_busy">Bejelentkezés</button>
-            <a class="btn btn-link" href="register">Regisztráció</a>
-        </EditForm>
+    <div class="mb-3">
+        <label class="form-label" for="email">E-mail-cím</label>
+        <div class="input-icon">
+            <i class="bi bi-envelope" aria-hidden="true"></i>
+            <InputText id="email" class="form-control" type="email" autocomplete="email" placeholder="nev@pelda.hu" @bind-Value="_model.Email" />
+        </div>
+        <ValidationMessage For="() => _model.Email" />
     </div>
-</div>
+
+    <div class="mb-4">
+        <label class="form-label" for="password">Jelszó</label>
+        <div class="input-icon has-toggle">
+            <i class="bi bi-lock" aria-hidden="true"></i>
+            <InputText id="password" class="form-control" type="@(_showPassword ? "text" : "password")" autocomplete="current-password" placeholder="••••••••" @bind-Value="_model.Password" />
+            <button type="button" class="icon-btn toggle-visibility" aria-label="@(_showPassword ? "Jelszó elrejtése" : "Jelszó megjelenítése")" @onclick="() => _showPassword = !_showPassword">
+                <i class="bi @(_showPassword ? "bi-eye-slash" : "bi-eye")" aria-hidden="true"></i>
+            </button>
+        </div>
+        <ValidationMessage For="() => _model.Password" />
+    </div>
+
+    <button type="submit" class="btn btn-primary btn-lg w-100" disabled="@_busy">
+        @if (_busy)
+        {
+            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+        }
+        Bejelentkezés
+    </button>
+</EditForm>
+
+<p class="auth-alt">Még nincs fiókod? <a href="register">Regisztráció</a></p>
 
 @code {
     [SupplyParameterFromQuery(Name = "registered")]
@@ -58,6 +65,7 @@
     private readonly LoginModel _model = new();
     private List<string> _errors = new();
     private bool _busy;
+    private bool _showPassword;
 
     private async Task SubmitAsync()
     {

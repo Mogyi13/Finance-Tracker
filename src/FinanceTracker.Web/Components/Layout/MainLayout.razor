@@ -1,43 +1,107 @@
 ﻿@inherits LayoutComponentBase
+@implements IDisposable
 @inject JwtAuthenticationStateProvider Session
 @inject NavigationManager Navigation
+@inject UserDisplayState UserState
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
+<AuthorizeView>
+    <Authorized Context="auth">
+        <div class="app-shell">
+            <aside id="app-sidebar" class="app-sidebar @(_navOpen ? "is-open" : null)">
+                <NavMenu />
+            </aside>
 
-    <main>
-        <div class="top-row px-4">
-            <AuthorizeView>
-                <Authorized>
-                    <span class="me-3">@context.User.FindFirst(ClaimTypes.Email)?.Value</span>
-                    <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="LogoutAsync">Kijelentkezés</button>
-                </Authorized>
-                <NotAuthorized>
-                    <a href="login" class="me-3">Bejelentkezés</a>
-                    <a href="register">Regisztráció</a>
-                </NotAuthorized>
-            </AuthorizeView>
+            @if (_navOpen)
+            {
+                <div class="app-backdrop" @onclick="CloseNav"></div>
+            }
+
+            <div class="app-main">
+                <div class="app-topbar">
+                    <button type="button" class="icon-btn d-lg-none" aria-label="Menü megnyitása" aria-controls="app-sidebar" aria-expanded="@_navOpen.ToString().ToLowerInvariant()" @onclick="ToggleNav">
+                        <i class="bi bi-list" aria-hidden="true"></i>
+                    </button>
+                    <a class="brand brand-dark d-lg-none" href="">
+                        <BrandMark Size="28" />
+                    </a>
+
+                    <div class="topbar-spacer"></div>
+
+                    <div class="user-chip">
+                        <UserAvatar Name="@DisplayName(auth.User)" />
+                        <div class="user-meta d-none d-sm-flex">
+                            <span class="user-name">@DisplayName(auth.User)</span>
+                            <span class="user-email">@auth.User.FindFirst(ClaimTypes.Email)?.Value</span>
+                        </div>
+                    </div>
+
+                    <button type="button" class="icon-btn" title="Kijelentkezés" aria-label="Kijelentkezés" @onclick="LogoutAsync">
+                        <i class="bi bi-box-arrow-right" aria-hidden="true"></i>
+                    </button>
+                </div>
+
+                <main class="app-content">@Body</main>
+            </div>
         </div>
+    </Authorized>
+    <NotAuthorized>
+        <div class="public-shell">
+            <header class="public-header">
+                <a class="brand brand-dark" href="">
+                    <BrandMark />
+                    <span>Finance Tracker</span>
+                </a>
+                <div class="public-actions">
+                    <a class="btn btn-outline-secondary btn-sm" href="login">Bejelentkezés</a>
+                    <a class="btn btn-primary btn-sm" href="register">Regisztráció</a>
+                </div>
+            </header>
 
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
-</div>
+            <div class="public-main">@Body</div>
 
-<div id="blazor-error-ui" data-nosnippet>
-    Váratlan hiba történt.
-    <a href="." class="reload">Újratöltés</a>
-    <span class="dismiss">🗙</span>
-</div>
+            <footer class="public-footer">© @DateTime.Now.Year Finance Tracker · Demo verzió</footer>
+        </div>
+    </NotAuthorized>
+</AuthorizeView>
 
 @code {
+    private bool _navOpen;
+
+    protected override void OnInitialized()
+    {
+        Navigation.LocationChanged += OnLocationChanged;
+        UserState.Changed += OnUserChanged;
+    }
+
+    private string DisplayName(ClaimsPrincipal user)
+        => UserState.DisplayName
+           ?? user.FindFirst(ClaimTypes.Name)?.Value
+           ?? user.FindFirst(ClaimTypes.Email)?.Value
+           ?? string.Empty;
+
+    private void ToggleNav() => _navOpen = !_navOpen;
+
+    private void CloseNav() => _navOpen = false;
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        _navOpen = false;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnUserChanged() => InvokeAsync(StateHasChanged);
+
     // UC-03: kijelentkezés
     private async Task LogoutAsync()
     {
+        UserState.Set(null);
         await Session.SignOutAsync();
         Navigation.NavigateTo("login");
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+        UserState.Changed -= OnUserChanged;
     }
 }

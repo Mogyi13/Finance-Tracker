@@ -1,0 +1,164 @@
+﻿@inject JwtAuthenticationStateProvider Session
+@inject AuthApiClient Api
+@inject TransactionApiClient TransactionsApi
+@inject NavigationManager Navigation
+@inject UserDisplayState UserState
+
+<PageHeader Title="@Greeting" Subtitle="Itt látod a pénzügyeid rövid összefoglalóját.">
+    <Actions>
+        <a class="btn btn-primary" href="transactions/new"><i class="bi bi-plus-lg" aria-hidden="true"></i> Új tranzakció</a>
+    </Actions>
+</PageHeader>
+
+@if (_loading)
+{
+    <div class="ft-card"><LoadingState /></div>
+}
+else
+{
+    @if (_error is not null)
+    {
+        <StatusMessage Kind="warning">@_error</StatusMessage>
+    }
+
+    <div class="stat-grid">
+        <div class="ft-card stat-card">
+            <span class="stat-icon indigo"><i class="bi bi-receipt" aria-hidden="true"></i></span>
+            <div>
+                <div class="stat-label">Rögzített tranzakciók</div>
+                <div class="stat-value">@(_page?.TotalCount.ToString("N0", TransactionFormat.Hu) ?? "–")</div>
+            </div>
+        </div>
+        <div class="ft-card stat-card">
+            <span class="stat-icon green"><i class="bi bi-calendar-event" aria-hidden="true"></i></span>
+            <div>
+                <div class="stat-label">Legutóbbi tranzakció</div>
+                <div class="stat-value">@(_page?.Items.Count > 0 ? TransactionFormat.Date(_page.Items[0].TransactionDate) : "–")</div>
+            </div>
+        </div>
+        <div class="ft-card stat-card">
+            <span class="stat-icon amber"><i class="bi bi-person-check" aria-hidden="true"></i></span>
+            <div>
+                <div class="stat-label">Tag ekkortól</div>
+                <div class="stat-value">@(_user is null ? "–" : _user.CreatedAt.ToLocalTime().ToString("yyyy. MM. dd.", TransactionFormat.Hu))</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="dash-grid">
+        <div class="ft-card">
+            <div class="ft-card-header">
+                <h2 class="ft-card-title">Legutóbbi tranzakciók</h2>
+                <a class="btn btn-outline-primary btn-sm" href="transactions">Összes megtekintése</a>
+            </div>
+
+            @if (_page is null || _page.Items.Count == 0)
+            {
+                <EmptyState Icon="bi-receipt" Title="Még nincs tranzakciód" Text="Rögzítsd az első tételt, és itt megjelenik a legutóbbi öt.">
+                    <a class="btn btn-primary" href="transactions/new"><i class="bi bi-plus-lg" aria-hidden="true"></i> Új tranzakció</a>
+                </EmptyState>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="ft-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Tranzakció</th>
+                                <th scope="col">Dátum</th>
+                                <th scope="col" class="text-end">Összeg</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var transaction in _page.Items)
+                            {
+                                var income = transaction.Type == TransactionType.Income;
+                                <tr>
+                                    <td>
+                                        <div class="tx-cell">
+                                            <span class="tx-icon @(income ? "tx-icon-income" : "tx-icon-expense")">
+                                                <i class="bi @(income ? "bi-arrow-down-left" : "bi-arrow-up-right")" aria-hidden="true"></i>
+                                            </span>
+                                            <div>
+                                                <div class="tx-title">@(string.IsNullOrWhiteSpace(transaction.Description) ? (income ? "Bevétel" : "Kiadás") : transaction.Description)</div>
+                                                <div class="tx-sub">@(transaction.CategoryName ?? "Kategorizálatlan")</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="date-cell">@TransactionFormat.Date(transaction.TransactionDate)</td>
+                                    <td class="text-end amount @(income ? "amount-income" : "amount-expense")">@TransactionFormat.Amount(transaction)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+
+        <div class="ft-card">
+            <div class="ft-card-header">
+                <h2 class="ft-card-title">Elkészült funkciók</h2>
+            </div>
+            <div class="ft-card-body">
+                <ul class="check-list">
+                    <li><i class="bi bi-check-circle-fill" aria-hidden="true"></i><div><strong>Regisztráció és belépés</strong><span>UC-01 – UC-03</span></div></li>
+                    <li><i class="bi bi-check-circle-fill" aria-hidden="true"></i><div><strong>Profil kezelése</strong><span>UC-04</span></div></li>
+                    <li><i class="bi bi-check-circle-fill" aria-hidden="true"></i><div><strong>Tranzakciók rögzítése és listázása</strong><span>UC-05 – UC-06</span></div></li>
+                    <li><i class="bi bi-check-circle-fill" aria-hidden="true"></i><div><strong>Módosítás és törlés</strong><span>UC-07 – UC-08</span></div></li>
+                    <li class="todo"><i class="bi bi-circle" aria-hidden="true"></i><div><strong>Statisztikák és előrejelzés</strong><span>Hamarosan</span></div></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private UserProfileDto? _user;
+    private PagedResult<TransactionDto>? _page;
+    private string? _error;
+
+    private string Greeting => string.IsNullOrWhiteSpace(_user?.DisplayName) ? "Üdv!" : $"Üdv, {_user.DisplayName}!";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var me = await Api.GetMeAsync();
+        if (me.IsUnauthorized)
+        {
+            // Lejárt vagy érvénytelen token: töröljük a hitelesítési állapotot.
+            UserState.Set(null);
+            await Session.SignOutAsync();
+            Navigation.NavigateTo("login");
+            return;
+        }
+
+        if (me.IsSuccess)
+        {
+            _user = me.Value;
+            UserState.Set(_user!.DisplayName);
+        }
+        else
+        {
+            _error = string.Join(" ", me.Messages);
+        }
+
+        var transactions = await TransactionsApi.GetPageAsync(new GetTransactionsQuery
+        {
+            Page = 1,
+            PageSize = 5,
+            SortBy = TransactionSortField.Date,
+            SortDirection = SortDirection.Descending
+        });
+
+        if (transactions.IsSuccess)
+        {
+            _page = transactions.Value;
+        }
+        else if (!transactions.IsUnauthorized)
+        {
+            _error = string.Join(" ", transactions.Messages);
+        }
+
+        _loading = false;
+    }
+}

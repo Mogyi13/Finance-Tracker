@@ -1,145 +1,165 @@
 ﻿@page "/transactions"
 @attribute [Authorize]
-@using System.Globalization
 @inject TransactionApiClient Api
 @inject JwtAuthenticationStateProvider Session
 @inject NavigationManager Navigation
+@inject UserDisplayState UserState
 
 <PageTitle>Tranzakciók</PageTitle>
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="h3 mb-0">Tranzakciók</h1>
-    <a class="btn btn-primary" href="transactions/new">Új tranzakció</a>
-</div>
+<PageHeader Title="Tranzakciók" Subtitle="Bevételeid és kiadásaid egy helyen.">
+    <Actions>
+        <a class="btn btn-primary" href="transactions/new"><i class="bi bi-plus-lg" aria-hidden="true"></i> Új tranzakció</a>
+    </Actions>
+</PageHeader>
 
 @if (Saved == "created")
 {
-    <div class="alert alert-success" role="status">A tranzakció rögzítése sikeres.</div>
+    <StatusMessage Kind="success">A tranzakció rögzítése sikeres.</StatusMessage>
 }
 else if (Saved == "updated")
 {
-    <div class="alert alert-success" role="status">A tranzakció módosítása sikeres.</div>
+    <StatusMessage Kind="success">A tranzakció módosítása sikeres.</StatusMessage>
 }
 
 @if (_error is not null)
 {
-    <div class="alert alert-danger" role="alert">@_error</div>
+    <StatusMessage Kind="danger">@_error</StatusMessage>
 }
 
-@if (_loading && _result is null)
-{
-    <p>Betöltés…</p>
-}
-else if (_result is not null)
-{
-    if (_result.TotalCount == 0)
+<div class="ft-card">
+    @if (_loading && _result is null)
     {
-        <p class="text-muted">Még nincs rögzített tranzakciód. Az „Új tranzakció” gombbal vehetsz fel egyet.</p>
+        <LoadingState />
     }
-    else
+    else if (_result is not null)
     {
-        <div class="table-responsive">
-            <table class="table table-hover align-middle">
-                <thead>
-                    <tr>
-                        <th scope="col">
-                            <button type="button" class="btn btn-link p-0 text-decoration-none" @onclick="() => SortByAsync(TransactionSortField.Date)">
-                                Dátum @SortIndicator(TransactionSortField.Date)
-                            </button>
-                        </th>
-                        <th scope="col">Típus</th>
-                        <th scope="col">Leírás</th>
-                        <th scope="col">Kategória</th>
-                        <th scope="col" class="text-end">
-                            <button type="button" class="btn btn-link p-0 text-decoration-none" @onclick="() => SortByAsync(TransactionSortField.Amount)">
-                                Összeg @SortIndicator(TransactionSortField.Amount)
-                            </button>
-                        </th>
-                        <th scope="col"><span class="visually-hidden">Műveletek</span></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var transaction in _result.Items)
-                    {
+        if (_result.TotalCount == 0)
+        {
+            <EmptyState Icon="bi-receipt" Title="Még nincs rögzített tranzakciód" Text="Vedd fel az első bevételedet vagy kiadásodat, és itt fogod látni az összes tételt.">
+                <a class="btn btn-primary" href="transactions/new"><i class="bi bi-plus-lg" aria-hidden="true"></i> Új tranzakció</a>
+            </EmptyState>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="ft-table">
+                    <thead>
                         <tr>
-                            <td>@transaction.TransactionDate.ToString("yyyy. MM. dd.", Hu)</td>
-                            <td>
-                                @if (transaction.Type == TransactionType.Income)
-                                {
-                                    <span class="badge bg-success">Bevétel</span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-danger">Kiadás</span>
-                                }
-                            </td>
-                            <td>@transaction.Description</td>
-                            <td>
-                                @if (transaction.CategoryName is not null)
-                                {
-                                    <span>@transaction.CategoryName</span>
-                                }
-                                else
-                                {
-                                    <span class="text-muted">Kategorizálatlan</span>
-                                }
-                            </td>
-                            <td class="text-end text-nowrap @(transaction.Type == TransactionType.Income ? "text-success" : "text-danger")">
-                                @FormatAmount(transaction)
-                            </td>
-                            <td class="text-end text-nowrap">
-                                <a class="btn btn-sm btn-outline-secondary" href="@($"transactions/{transaction.Id}/edit")">Szerkesztés</a>
-                                <button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => AskDelete(transaction)">Törlés</button>
-                            </td>
+                            <th scope="col" aria-sort="@(AriaSort(TransactionSortField.Date) ?? "none")">
+                                <button type="button" class="th-sort @(_sortBy == TransactionSortField.Date ? "is-active" : null)" @onclick="() => SortByAsync(TransactionSortField.Date)">
+                                    Dátum
+                                    @if (_sortBy == TransactionSortField.Date)
+                                    {
+                                        <i class="bi @SortIcon(TransactionSortField.Date)" aria-hidden="true"></i>
+                                    }
+                                </button>
+                            </th>
+                            <th scope="col">Tranzakció</th>
+                            <th scope="col">Kategória</th>
+                            <th scope="col" class="text-end" aria-sort="@(AriaSort(TransactionSortField.Amount) ?? "none")">
+                                <button type="button" class="th-sort @(_sortBy == TransactionSortField.Amount ? "is-active" : null)" @onclick="() => SortByAsync(TransactionSortField.Amount)">
+                                    Összeg
+                                    @if (_sortBy == TransactionSortField.Amount)
+                                    {
+                                        <i class="bi @SortIcon(TransactionSortField.Amount)" aria-hidden="true"></i>
+                                    }
+                                </button>
+                            </th>
+                            <th scope="col" class="col-actions"><span class="visually-hidden">Műveletek</span></th>
                         </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-
-        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
-            <div class="text-muted">
-                @_result.TotalCount tranzakció, @_result.Page. oldal / @_result.TotalPages
+                    </thead>
+                    <tbody>
+                        @foreach (var transaction in _result.Items)
+                        {
+                            var income = transaction.Type == TransactionType.Income;
+                            <tr>
+                                <td class="date-cell">@TransactionFormat.Date(transaction.TransactionDate)</td>
+                                <td>
+                                    <div class="tx-cell">
+                                        <span class="tx-icon @(income ? "tx-icon-income" : "tx-icon-expense")">
+                                            <i class="bi @(income ? "bi-arrow-down-left" : "bi-arrow-up-right")" aria-hidden="true"></i>
+                                        </span>
+                                        <div>
+                                            <div class="tx-title">@(string.IsNullOrWhiteSpace(transaction.Description) ? (income ? "Bevétel" : "Kiadás") : transaction.Description)</div>
+                                            <div class="tx-sub">@(income ? "Bevétel" : "Kiadás")</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    @if (transaction.CategoryName is not null)
+                                    {
+                                        <span class="chip">@transaction.CategoryName</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="chip chip-muted">Kategorizálatlan</span>
+                                    }
+                                </td>
+                                <td class="text-end amount @(income ? "amount-income" : "amount-expense")">@TransactionFormat.Amount(transaction)</td>
+                                <td class="col-actions">
+                                    <a class="icon-btn" title="Szerkesztés" aria-label="Szerkesztés" href="@($"transactions/{transaction.Id}/edit")"><i class="bi bi-pencil" aria-hidden="true"></i></a>
+                                    <button type="button" class="icon-btn danger" title="Törlés" aria-label="Törlés" @onclick="() => AskDelete(transaction)"><i class="bi bi-trash3" aria-hidden="true"></i></button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
             </div>
 
-            <div class="d-flex align-items-center gap-2">
-                <label class="form-label mb-0" for="pageSize">Oldalméret</label>
-                <select id="pageSize" class="form-select form-select-sm w-auto" value="@_pageSize" @onchange="OnPageSizeChangedAsync">
-                    <option value="10">10</option>
-                    <option value="20">20</option>
-                    <option value="50">50</option>
-                </select>
+            <div class="ft-card-footer">
+                <div class="text-muted">
+                    @_result.TotalCount tranzakció · @_result.Page. oldal / @_result.TotalPages
+                </div>
 
-                <button type="button" class="btn btn-outline-secondary btn-sm" disabled="@(!_result.HasPrevious || _loading)" @onclick="PreviousPageAsync">Előző</button>
-                <button type="button" class="btn btn-outline-secondary btn-sm" disabled="@(!_result.HasNext || _loading)" @onclick="NextPageAsync">Következő</button>
+                <div class="d-flex flex-wrap align-items-center gap-3">
+                    <div class="page-size">
+                        <label for="pageSize">Oldalméret</label>
+                        <select id="pageSize" class="form-select form-select-sm" value="@_pageSize" @onchange="OnPageSizeChangedAsync">
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="50">50</option>
+                        </select>
+                    </div>
+
+                    <div class="pager">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" disabled="@(!_result.HasPrevious || _loading)" @onclick="PreviousPageAsync"><i class="bi bi-chevron-left" aria-hidden="true"></i> Előző</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" disabled="@(!_result.HasNext || _loading)" @onclick="NextPageAsync">Következő <i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+                    </div>
+                </div>
             </div>
-        </div>
+        }
     }
-}
+</div>
 
 @if (_deleteTarget is not null)
 {
     <div class="modal-backdrop fade show"></div>
     <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="deleteTitle">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h2 class="modal-title h5" id="deleteTitle">Tranzakció törlése</h2>
-                </div>
-                <div class="modal-body">
-                    <p>Biztosan törölni szeretnéd ezt a tranzakciót? A művelet nem vonható vissza.</p>
+                <div class="modal-body p-4">
+                    <span class="modal-icon"><i class="bi bi-trash3" aria-hidden="true"></i></span>
+                    <h2 class="h5 mb-2" id="deleteTitle">Tranzakció törlése</h2>
+                    <p class="text-muted">Biztosan törölni szeretnéd ezt a tranzakciót? A művelet nem vonható vissza.</p>
                     <p class="mb-0">
-                        <strong>@_deleteTarget.TransactionDate.ToString("yyyy. MM. dd.", Hu)</strong>
-                        – @FormatAmount(_deleteTarget)
+                        <strong>@TransactionFormat.Date(_deleteTarget.TransactionDate)</strong>
+                        – @TransactionFormat.Amount(_deleteTarget)
                         @if (!string.IsNullOrWhiteSpace(_deleteTarget.Description))
                         {
-                            <span>(@_deleteTarget.Description)</span>
+                            <span class="text-muted">(@_deleteTarget.Description)</span>
                         }
                     </p>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" disabled="@_deleting" @onclick="CancelDelete">Mégse</button>
-                    <button type="button" class="btn btn-danger" disabled="@_deleting" @onclick="ConfirmDeleteAsync">Törlés</button>
+                <div class="modal-footer border-0 pt-0 px-4 pb-4">
+                    <button type="button" class="btn btn-outline-secondary" disabled="@_deleting" @onclick="CancelDelete">Mégse</button>
+                    <button type="button" class="btn btn-danger" disabled="@_deleting" @onclick="ConfirmDeleteAsync">
+                        @if (_deleting)
+                        {
+                            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                        }
+                        Törlés
+                    </button>
                 </div>
             </div>
         </div>
@@ -147,8 +167,6 @@ else if (_result is not null)
 }
 
 @code {
-    private static readonly CultureInfo Hu = new("hu-HU");
-
     [SupplyParameterFromQuery(Name = "saved")]
     public string? Saved { get; set; }
 
@@ -220,8 +238,11 @@ else if (_result is not null)
         await LoadAsync();
     }
 
-    private string SortIndicator(TransactionSortField field)
-        => _sortBy != field ? string.Empty : _sortDirection == SortDirection.Ascending ? "▲" : "▼";
+    private string SortIcon(TransactionSortField field)
+        => _sortDirection == SortDirection.Ascending ? "bi-arrow-up" : "bi-arrow-down";
+
+    private string? AriaSort(TransactionSortField field)
+        => _sortBy != field ? null : _sortDirection == SortDirection.Ascending ? "ascending" : "descending";
 
     private async Task PreviousPageAsync()
     {
@@ -281,11 +302,9 @@ else if (_result is not null)
         await LoadAsync();
     }
 
-    private static string FormatAmount(TransactionDto transaction)
-        => $"{(transaction.Type == TransactionType.Income ? "+" : "−")}{transaction.Amount.ToString("N2", Hu)} {transaction.Currency}";
-
     private async Task SignOutAsync()
     {
+        UserState.Set(null);
         await Session.SignOutAsync();
         Navigation.NavigateTo("login");
     }

@@ -1,0 +1,18 @@
+﻿<svg class="brand-mark" width="@Size" height="@Size" viewBox="0 0 40 40" aria-hidden="true">
+    <defs>
+        <linearGradient id="@_id" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#6366f1" />
+            <stop offset="1" stop-color="#8b5cf6" />
+        </linearGradient>
+    </defs>
+    <rect width="40" height="40" rx="11" fill="@_fill" />
+    <path d="M9 27l8-8 5 5 9-11" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <circle cx="31" cy="13" r="2.6" fill="#fff" />
+</svg>
+
+@code {
+    [Parameter] public int Size { get; set; } = 34;
+
+    private readonly string _id = "ft-g-" + Guid.NewGuid().ToString("N")[..8];
+    private string _fill => $"url(#{_id})";
+}
