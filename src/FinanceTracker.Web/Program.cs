@@ -27,6 +27,7 @@ builder.Services.AddHttpClient<ImportApiClient>(client => client.BaseAddress = n
 builder.Services.AddHttpClient<CategorizationRuleApiClient>(client => client.BaseAddress = new Uri(apiBaseUrl));
 builder.Services.AddHttpClient<CategorizationApiClient>(client => client.BaseAddress = new Uri(apiBaseUrl));
 builder.Services.AddHttpClient<ModelAdminApiClient>(client => client.BaseAddress = new Uri(apiBaseUrl));
+builder.Services.AddHttpClient<AnalyticsApiClient>(client => client.BaseAddress = new Uri(apiBaseUrl));
 
 var app = builder.Build();
 

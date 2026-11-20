@@ -1,0 +1,218 @@
+﻿@page "/analytics"
+@attribute [Authorize]
+@inherits AuthorizedPageBase
+@using FinanceTracker.Application.Features.Analytics.GetCategoryBreakdown
+@using FinanceTracker.Application.Features.Analytics.GetOverview
+@inject AnalyticsApiClient Api
+
+<PageTitle>Pénzügyi áttekintés</PageTitle>
+
+<PageHeader Title="Pénzügyi áttekintés" Subtitle="Bevételek, kiadások és a kiadások kategóriánkénti megoszlása a kiválasztott időszakra.">
+    <Actions>
+        <a class="btn btn-outline-primary" href="analytics/compare"><i class="bi bi-arrow-left-right" aria-hidden="true"></i> Időszakok összehasonlítása</a>
+    </Actions>
+</PageHeader>
+
+<div class="ft-card period-card">
+    <PeriodPicker Id="overview-period" From="_range.From" To="_range.To" Changed="OnPeriodChangedAsync" />
+</div>
+
+@if (_error is not null)
+{
+    <StatusMessage Kind="danger">@_error</StatusMessage>
+}
+
+@if (_loading)
+{
+    <div class="ft-card"><LoadingState /></div>
+}
+else if (_overview is not null)
+{
+    @if (_overview.Currencies.Count == 0)
+    {
+        <div class="ft-card">
+            <EmptyState Icon="bi-bar-chart" Title="Nincs tranzakció a kiválasztott időszakban" Text="Válassz másik időszakot, vagy rögzíts új tranzakciót.">
+                <a class="btn btn-primary" href="transactions/new"><i class="bi bi-plus-lg" aria-hidden="true"></i> Új tranzakció</a>
+            </EmptyState>
+        </div>
+    }
+    else
+    {
+        <StatusMessage Kind="info">
+            A nettó pénzforgalom a bevételek és a kiadások különbsége a kiválasztott időszakban. Nem azonos a bankszámla tényleges egyenlegével.
+            @if (_overview.Currencies.Count > 1)
+            {
+                <span> A különböző pénznemek összegei nincsenek összevonva.</span>
+            }
+        </StatusMessage>
+
+        @foreach (var currency in _overview.Currencies)
+        {
+            var breakdown = _breakdown?.Currencies.FirstOrDefault(c => c.Currency == currency.Currency);
+            var net = currency.NetCashFlow;
+
+            <section class="currency-section" aria-label="@($"{currency.Currency} összesítés")">
+                <h2 class="section-title"><span class="chip chip-muted">@currency.Currency</span> Összesítés</h2>
+
+                <div class="stat-grid stat-grid-4">
+                    <div class="ft-card stat-card">
+                        <span class="stat-icon green"><i class="bi bi-arrow-down-left" aria-hidden="true"></i></span>
+                        <div>
+                            <div class="stat-label">Összes bevétel</div>
+                            <div class="stat-value">@AnalyticsFormat.Money(currency.TotalIncome, currency.Currency)</div>
+                        </div>
+                    </div>
+                    <div class="ft-card stat-card">
+                        <span class="stat-icon red"><i class="bi bi-arrow-up-right" aria-hidden="true"></i></span>
+                        <div>
+                            <div class="stat-label">Összes kiadás</div>
+                            <div class="stat-value">@AnalyticsFormat.Money(currency.TotalExpense, currency.Currency)</div>
+                        </div>
+                    </div>
+                    <div class="ft-card stat-card">
+                        <span class="stat-icon @(net >= 0 ? "indigo" : "amber")"><i class="bi bi-cash-stack" aria-hidden="true"></i></span>
+                        <div>
+                            <div class="stat-label">Nettó pénzforgalom</div>
+                            <div class="stat-value">@AnalyticsFormat.SignedMoney(net, currency.Currency)</div>
+                        </div>
+                    </div>
+                    <div class="ft-card stat-card">
+                        <span class="stat-icon indigo"><i class="bi bi-receipt" aria-hidden="true"></i></span>
+                        <div>
+                            <div class="stat-label">Tranzakciók száma</div>
+                            <div class="stat-value">@currency.TransactionCount.ToString("N0", TransactionFormat.Hu)</div>
+                            <div class="stat-sub">@currency.IncomeCount bevétel · @currency.ExpenseCount kiadás</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ft-card">
+                    <div class="ft-card-header">
+                        <h3 class="ft-card-title">Kiadások kategóriánként</h3>
+                    </div>
+
+                    @if (breakdown is null || breakdown.Categories.Count == 0)
+                    {
+                        <EmptyState Icon="bi-pie-chart" Title="Nincs kiadás ebben a pénznemben" Text="A kiválasztott időszakban nem volt kiadás." />
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="ft-table">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Kategória</th>
+                                        <th scope="col" class="share-col">Arány a kiadásból</th>
+                                        <th scope="col" class="text-end">Összeg</th>
+                                        <th scope="col" class="text-end">Tranzakciók</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var category in breakdown.Categories)
+                                    {
+                                        <tr>
+                                            <td>
+                                                @if (category.CategoryId is null)
+                                                {
+                                                    <span class="text-muted">@category.CategoryName</span>
+                                                }
+                                                else
+                                                {
+                                                    @category.CategoryName
+                                                }
+                                            </td>
+                                            <td class="share-col">
+                                                <div class="share-cell">
+                                                    <div class="bar-track" role="img" aria-label="@($"{category.CategoryName}: {AnalyticsFormat.Share(category.Share)}")">
+                                                        <div class="bar-fill" style="width: @(BarWidth(category.Share))"></div>
+                                                    </div>
+                                                    <span class="share-text">@AnalyticsFormat.Share(category.Share)</span>
+                                                </div>
+                                            </td>
+                                            <td class="text-end amount amount-expense">@AnalyticsFormat.Money(category.Amount, currency.Currency)</td>
+                                            <td class="text-end">@category.TransactionCount.ToString("N0", TransactionFormat.Hu)</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <th scope="row">Összesen</th>
+                                        <td class="share-col"></td>
+                                        <td class="text-end amount">@AnalyticsFormat.Money(breakdown.TotalExpense, currency.Currency)</td>
+                                        <td class="text-end">@breakdown.TransactionCount.ToString("N0", TransactionFormat.Hu)</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </section>
+        }
+    }
+}
+
+@code {
+    private DateRange _range = PeriodPreset.Month(DateOnly.FromDateTime(DateTime.Now), 0);
+    private FinancialOverviewDto? _overview;
+    private CategoryBreakdownDto? _breakdown;
+    private bool _loading = true;
+    private string? _error;
+
+    // Gyors, egymás után érkező váltásoknál csak a legutolsó kérés eredménye számít.
+    private int _requestId;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private Task OnPeriodChangedAsync(DateRange range)
+    {
+        _range = range;
+        return LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var requestId = ++_requestId;
+        _loading = true;
+        _error = null;
+
+        var overview = await Api.GetOverviewAsync(_range.From, _range.To);
+        if (await HandleUnauthorizedAsync(overview))
+        {
+            return;
+        }
+
+        var breakdown = overview.IsSuccess ? await Api.GetCategoryBreakdownAsync(_range.From, _range.To) : null;
+        if (breakdown is not null && await HandleUnauthorizedAsync(breakdown))
+        {
+            return;
+        }
+
+        if (requestId != _requestId)
+        {
+            return;
+        }
+
+        if (!overview.IsSuccess)
+        {
+            _error = string.Join(" ", overview.Messages);
+            _overview = null;
+            _breakdown = null;
+        }
+        else if (breakdown is { IsSuccess: false })
+        {
+            _error = string.Join(" ", breakdown.Messages);
+            _overview = overview.Value;
+            _breakdown = null;
+        }
+        else
+        {
+            _overview = overview.Value;
+            _breakdown = breakdown?.Value;
+        }
+
+        _loading = false;
+    }
+
+    private static string BarWidth(decimal share)
+        => (Math.Clamp(share, 0m, 1m) * 100m).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "%";
+}

@@ -1,4 +1,8 @@
-﻿using FinanceTracker.Application.Features.Authentication.Login;
+﻿using FinanceTracker.Application.Features.Analytics.ComparePeriods;
+using FinanceTracker.Application.Features.Analytics.GetCategoryBreakdown;
+using FinanceTracker.Application.Features.Analytics.GetOverview;
+using FinanceTracker.Application.Features.Analytics.Recurring;
+using FinanceTracker.Application.Features.Authentication.Login;
 using FinanceTracker.Application.Features.Authentication.Register;
 using FinanceTracker.Application.Features.Categories.CreateCategory;
 using FinanceTracker.Application.Features.Categorization;
@@ -74,6 +78,13 @@ public static class DependencyInjection
         services.AddScoped<CorrectCategoryHandler>();
         services.AddScoped<PredictCategoryHandler>();
         services.AddScoped<GetSuggestionsHandler>();
+
+        // UC-21..UC-24: pénzügyi elemzések és ismétlődő kiadások felismerése
+        services.AddScoped<GetOverviewHandler>();
+        services.AddScoped<GetCategoryBreakdownHandler>();
+        services.AddScoped<ComparePeriodsHandler>();
+        services.AddScoped<GetRecurringHandler>();
+        services.AddScoped<DetectRecurringHandler>();
 
         // UC-20: modell tanítása, kiértékelése, aktiválása
         services.AddScoped<TrainModelHandler>();

@@ -1,0 +1,229 @@
+﻿@page "/analytics/compare"
+@attribute [Authorize]
+@inherits AuthorizedPageBase
+@using FinanceTracker.Application.Features.Analytics.ComparePeriods
+@inject AnalyticsApiClient Api
+
+<PageTitle>Időszakok összehasonlítása</PageTitle>
+
+<PageHeader Title="Időszakok összehasonlítása" Subtitle="Két időszak bevételei, kiadásai és kategóriánkénti kiadásai egymás mellett.">
+    <Actions>
+        <a class="btn btn-outline-primary" href="analytics"><i class="bi bi-bar-chart" aria-hidden="true"></i> Áttekintés</a>
+    </Actions>
+</PageHeader>
+
+<div class="ft-card period-card">
+    <div class="compare-presets" role="group" aria-label="Gyors összehasonlítások">
+        <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="UseLastVsThisMonth">Előző hónap ↔ aktuális hónap</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="UseLast30Days">Előző 30 nap ↔ elmúlt 30 nap</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="UseLastVsThisYear">Tavalyi év ↔ idei év</button>
+    </div>
+
+    <div class="compare-grid">
+        <div>
+            <h2 class="period-title">Alap időszak</h2>
+            <PeriodPicker Id="base-period" From="_base.From" To="_base.To" ShowPresets="false" Changed="OnBaseChanged" />
+        </div>
+        <div>
+            <h2 class="period-title">Összehasonlított időszak</h2>
+            <PeriodPicker Id="compared-period" From="_compared.From" To="_compared.To" ShowPresets="false" Changed="OnComparedChanged" />
+        </div>
+    </div>
+
+    <div class="filter-actions">
+        <button type="button" class="btn btn-primary" disabled="@_loading" @onclick="CompareAsync">
+            <i class="bi bi-arrow-left-right" aria-hidden="true"></i> Összehasonlítás
+        </button>
+    </div>
+</div>
+
+@if (_error is not null)
+{
+    <StatusMessage Kind="danger">@_error</StatusMessage>
+}
+
+@if (_loading)
+{
+    <div class="ft-card"><LoadingState /></div>
+}
+else if (_result is not null)
+{
+    @if (_result.Currencies.Count == 0)
+    {
+        <div class="ft-card">
+            <EmptyState Icon="bi-bar-chart" Title="Egyik időszakban sincs tranzakció" Text="Válassz másik időszakokat az összehasonlításhoz." />
+        </div>
+    }
+    else
+    {
+        <StatusMessage Kind="info">
+            Az eltérés = összehasonlított időszak − alap időszak. A százalékos eltérés az alapérték abszolút értékéhez viszonyít, és csak akkor értelmezhető, ha az alapérték nem nulla.
+            @if (_result.Currencies.Count > 1)
+            {
+                <span> A különböző pénznemek összegei nincsenek összevonva.</span>
+            }
+        </StatusMessage>
+
+        <p class="compare-legend">
+            <strong>Alap:</strong> @TransactionFormat.Date(_result.Base.From) – @TransactionFormat.Date(_result.Base.To)
+            · <strong>Összehasonlított:</strong> @TransactionFormat.Date(_result.Compared.From) – @TransactionFormat.Date(_result.Compared.To)
+        </p>
+
+        @foreach (var currency in _result.Currencies)
+        {
+            <section class="currency-section" aria-label="@($"{currency.Currency} összehasonlítás")">
+                <h2 class="section-title"><span class="chip chip-muted">@currency.Currency</span> Összesítés</h2>
+
+                <div class="ft-card">
+                    <div class="table-responsive">
+                        <table class="ft-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Mutató</th>
+                                    <th scope="col" class="text-end">Alap időszak</th>
+                                    <th scope="col" class="text-end">Összehasonlított</th>
+                                    <th scope="col" class="text-end">Eltérés</th>
+                                    <th scope="col" class="text-end">Eltérés (%)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @MetricRow("Bevétel", currency.Income, currency.Currency, higherIsBetter: true)
+                                @MetricRow("Kiadás", currency.Expense, currency.Currency, higherIsBetter: false)
+                                @MetricRow("Nettó pénzforgalom", currency.NetCashFlow, currency.Currency, higherIsBetter: true)
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="ft-card">
+                    <div class="ft-card-header">
+                        <h3 class="ft-card-title">Kiadások kategóriánként</h3>
+                        <span class="text-muted">A legnagyobb eltéréssel kezdve</span>
+                    </div>
+
+                    @if (currency.Categories.Count == 0)
+                    {
+                        <EmptyState Icon="bi-pie-chart" Title="Nincs kiadás ebben a pénznemben" Text="Egyik időszakban sem volt kiadás." />
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="ft-table">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Kategória</th>
+                                        <th scope="col" class="text-end">Alap időszak</th>
+                                        <th scope="col" class="text-end">Összehasonlított</th>
+                                        <th scope="col" class="text-end">Eltérés</th>
+                                        <th scope="col" class="text-end">Eltérés (%)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var category in currency.Categories)
+                                    {
+                                        <tr>
+                                            <td>
+                                                @if (category.CategoryId is null)
+                                                {
+                                                    <span class="text-muted">@category.CategoryName</span>
+                                                }
+                                                else
+                                                {
+                                                    @category.CategoryName
+                                                }
+                                            </td>
+                                            <td class="text-end">
+                                                @AnalyticsFormat.Money(category.Expense.Base, currency.Currency)
+                                                <div class="stat-sub">@category.BaseCount tétel</div>
+                                            </td>
+                                            <td class="text-end">
+                                                @AnalyticsFormat.Money(category.Expense.Compared, currency.Currency)
+                                                <div class="stat-sub">@category.ComparedCount tétel</div>
+                                            </td>
+                                            <td class="text-end @AnalyticsFormat.DeltaClass(category.Expense.Difference, higherIsBetter: false)">
+                                                @AnalyticsFormat.SignedMoney(category.Expense.Difference, currency.Currency)
+                                            </td>
+                                            <td class="text-end @AnalyticsFormat.PercentClass(category.Expense, higherIsBetter: false)">
+                                                @AnalyticsFormat.PercentChange(category.Expense)
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </section>
+        }
+    }
+}
+
+@code {
+    private static DateOnly Today => DateOnly.FromDateTime(DateTime.Now);
+
+    private DateRange _base = PeriodPreset.Month(Today, -1);
+    private DateRange _compared = PeriodPreset.Month(Today, 0);
+    private PeriodComparisonDto? _result;
+    private bool _loading;
+    private string? _error;
+
+    protected override Task OnInitializedAsync() => CompareAsync();
+
+    private void OnBaseChanged(DateRange range) => _base = range;
+
+    private void OnComparedChanged(DateRange range) => _compared = range;
+
+    private void UseLastVsThisMonth()
+    {
+        _base = PeriodPreset.Month(Today, -1);
+        _compared = PeriodPreset.Month(Today, 0);
+    }
+
+    private void UseLast30Days()
+    {
+        _base = new DateRange(Today.AddDays(-59), Today.AddDays(-30));
+        _compared = new DateRange(Today.AddDays(-29), Today);
+    }
+
+    private void UseLastVsThisYear()
+    {
+        _base = new DateRange(new DateOnly(Today.Year - 1, 1, 1), new DateOnly(Today.Year - 1, 12, 31));
+        _compared = new DateRange(new DateOnly(Today.Year, 1, 1), new DateOnly(Today.Year, 12, 31));
+    }
+
+    private async Task CompareAsync()
+    {
+        _loading = true;
+        _error = null;
+
+        var response = await Api.CompareAsync(_base, _compared);
+        if (await HandleUnauthorizedAsync(response))
+        {
+            return;
+        }
+
+        if (response.IsSuccess)
+        {
+            _result = response.Value;
+        }
+        else
+        {
+            _result = null;
+            _error = string.Join(" ", response.Messages);
+        }
+
+        _loading = false;
+    }
+
+    private RenderFragment MetricRow(string label, MetricComparisonDto metric, string currency, bool higherIsBetter) => __builder =>
+    {
+        var css = AnalyticsFormat.DeltaClass(metric.Difference, higherIsBetter);
+        <tr>
+            <th scope="row">@label</th>
+            <td class="text-end">@AnalyticsFormat.Money(metric.Base, currency)</td>
+            <td class="text-end">@AnalyticsFormat.Money(metric.Compared, currency)</td>
+            <td class="text-end @css">@AnalyticsFormat.SignedMoney(metric.Difference, currency)</td>
+            <td class="text-end @AnalyticsFormat.PercentClass(metric, higherIsBetter)">@AnalyticsFormat.PercentChange(metric)</td>
+        </tr>
+    };
+}

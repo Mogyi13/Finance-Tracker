@@ -23,3 +23,29 @@ Authorization: Bearer {{token}}
 
 GET {{FinanceTracker.API_HostAddress}}/api/categorization/models
 Authorization: Bearer {{token}}
+
+###
+
+### UC-21..UC-24 (a {{token}} ugyanaz a JWT; az időszak mindkét napja beletartozik, megadás nélkül az aktuális hónap)
+GET {{FinanceTracker.API_HostAddress}}/api/analytics/overview?from=2026-11-01&to=2026-11-30
+Authorization: Bearer {{token}}
+
+###
+
+GET {{FinanceTracker.API_HostAddress}}/api/analytics/categories?from=2026-11-01&to=2026-11-30
+Authorization: Bearer {{token}}
+
+###
+
+GET {{FinanceTracker.API_HostAddress}}/api/analytics/compare?baseFrom=2026-10-01&baseTo=2026-10-31&comparedFrom=2026-11-01&comparedTo=2026-11-30
+Authorization: Bearer {{token}}
+
+###
+
+POST {{FinanceTracker.API_HostAddress}}/api/analytics/recurring/analyze
+Authorization: Bearer {{token}}
+
+###
+
+GET {{FinanceTracker.API_HostAddress}}/api/analytics/recurring
+Authorization: Bearer {{token}}
