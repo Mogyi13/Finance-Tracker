@@ -1,0 +1,453 @@
+﻿@page "/rules"
+@attribute [Authorize]
+@inject CategorizationRuleApiClient Api
+@inject CategoryApiClient CategoriesApi
+@inject JwtAuthenticationStateProvider Session
+@inject NavigationManager Navigation
+@inject UserDisplayState UserState
+
+<PageTitle>Kategorizálási szabályok</PageTitle>
+
+<PageHeader Title="Kategorizálási szabályok" Subtitle="Kulcsszavak alapján automatikusan kategorizáljuk az új és az importált tranzakciókat.">
+    <Actions>
+        @if (!_formOpen)
+        {
+            <button type="button" class="btn btn-primary" @onclick="OpenCreate">
+                <i class="bi bi-plus-lg" aria-hidden="true"></i> Új szabály
+            </button>
+        }
+    </Actions>
+</PageHeader>
+
+@if (_success is not null)
+{
+    <StatusMessage Kind="success">@_success</StatusMessage>
+}
+
+@if (_pageError is not null)
+{
+    <StatusMessage Kind="danger">@_pageError</StatusMessage>
+}
+
+@if (_formOpen)
+{
+    <div class="ft-card mb-4" style="max-width: 760px;">
+        <div class="ft-card-header">
+            <h2 class="ft-card-title">@(_editingId is null ? "Új szabály" : "Szabály szerkesztése")</h2>
+        </div>
+
+        <EditForm Model="_model" OnValidSubmit="SaveAsync">
+            <DataAnnotationsValidator />
+
+            <div class="ft-card-body">
+                @if (_formErrors.Count > 0)
+                {
+                    <StatusMessage Kind="danger" Messages="_formErrors" />
+                }
+
+                <div class="rule-form-grid">
+                    <div class="rule-wide">
+                        <label class="form-label" for="rule-keyword">Kulcsszó vagy kifejezés</label>
+                        <InputText id="rule-keyword" class="form-control" maxlength="200" placeholder="Például: lidl" @bind-Value="_model.Keyword" />
+                        <ValidationMessage For="() => _model.Keyword" />
+                        <div class="form-text">A kis- és nagybetű, valamint a többszörös szóköz nem számít.</div>
+                    </div>
+
+                    <div>
+                        <label class="form-label" for="rule-match">Egyezés típusa</label>
+                        <InputSelect id="rule-match" class="form-select" @bind-Value="_model.MatchType">
+                            @foreach (var type in Enum.GetValues<RuleMatchType>())
+                            {
+                                <option value="@type">@RuleDisplay.MatchTypeName(type)</option>
+                            }
+                        </InputSelect>
+                        <div class="form-text">@RuleDisplay.MatchTypeHint(_model.MatchType)</div>
+                    </div>
+
+                    <div>
+                        <label class="form-label" for="rule-category">Célkategória</label>
+                        <InputSelect id="rule-category" class="form-select" @bind-Value="_model.CategoryId">
+                            <option value="">Válassz kategóriát…</option>
+                            <optgroup label="Kiadási kategóriák">
+                                @foreach (var category in CategoriesOf(CategoryType.Expense))
+                                {
+                                    <option value="@category.Id">@category.Name</option>
+                                }
+                            </optgroup>
+                            <optgroup label="Bevételi kategóriák">
+                                @foreach (var category in CategoriesOf(CategoryType.Income))
+                                {
+                                    <option value="@category.Id">@category.Name</option>
+                                }
+                            </optgroup>
+                        </InputSelect>
+                        <ValidationMessage For="() => _model.CategoryId" />
+                        <div class="form-text">A szabály csak a kategória típusának megfelelő (bevételi vagy kiadási) tranzakcióra érvényes.</div>
+                    </div>
+
+                    <div>
+                        <label class="form-label" for="rule-priority">Prioritás</label>
+                        <InputNumber id="rule-priority" class="form-control" @bind-Value="_model.Priority" />
+                        <ValidationMessage For="() => _model.Priority" />
+                        <div class="form-text">A nagyobb szám előbb értékelődik ki. Az első egyező szabály dönt.</div>
+                    </div>
+
+                    <div class="d-flex align-items-center">
+                        <div class="form-check form-switch">
+                            <InputCheckbox id="rule-active" class="form-check-input" role="switch" @bind-Value="_model.IsActive" />
+                            <label class="form-check-label" for="rule-active">Aktív</label>
+                            <div class="form-text">Az inaktív szabályt nem veszi figyelembe a kategorizálás.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ft-card-footer justify-content-end">
+                <button type="button" class="btn btn-outline-secondary" disabled="@_busy" @onclick="CloseForm">Mégse</button>
+                <button type="submit" class="btn btn-primary" disabled="@_busy">
+                    @if (_busy)
+                    {
+                        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                    }
+                    Mentés
+                </button>
+            </div>
+        </EditForm>
+    </div>
+}
+
+<div class="ft-card">
+    @if (_loading)
+    {
+        <LoadingState />
+    }
+    else if (_rules.Count == 0)
+    {
+        <EmptyState Icon="bi-magic" Title="Még nincs kategorizálási szabályod" Text="Hozz létre egy szabályt, például: ha a leírás tartalmazza, hogy „lidl”, legyen a kategória Élelmiszer.">
+            @if (!_formOpen)
+            {
+                <button type="button" class="btn btn-primary" @onclick="OpenCreate"><i class="bi bi-plus-lg" aria-hidden="true"></i> Első szabály létrehozása</button>
+            }
+        </EmptyState>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="ft-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Prioritás</th>
+                        <th scope="col">Kulcsszó</th>
+                        <th scope="col">Egyezés</th>
+                        <th scope="col">Kategória</th>
+                        <th scope="col">Aktív</th>
+                        <th scope="col" class="col-actions"><span class="visually-hidden">Műveletek</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (var i = 0; i < _rules.Count; i++)
+                    {
+                        var index = i;
+                        var rule = _rules[i];
+                        <tr class="@(rule.IsActive ? null : "rule-inactive")">
+                            <td>
+                                <div class="priority-cell">
+                                    <span class="priority-value">@rule.Priority</span>
+                                    <span class="priority-buttons">
+                                        <button type="button" class="icon-btn" title="Feljebb (előbb értékelődik ki)" aria-label="@($"{rule.Keyword} szabály feljebb")" disabled="@(_busy || index == 0)" @onclick="() => MoveAsync(index, -1)"><i class="bi bi-chevron-up" aria-hidden="true"></i></button>
+                                        <button type="button" class="icon-btn" title="Lejjebb (később értékelődik ki)" aria-label="@($"{rule.Keyword} szabály lejjebb")" disabled="@(_busy || index == _rules.Count - 1)" @onclick="() => MoveAsync(index, 1)"><i class="bi bi-chevron-down" aria-hidden="true"></i></button>
+                                    </span>
+                                </div>
+                            </td>
+                            <td><code class="rule-keyword">@rule.Keyword</code></td>
+                            <td>@RuleDisplay.MatchTypeName(rule.MatchType)</td>
+                            <td>
+                                <span class="chip">@rule.CategoryName</span>
+                                <span class="text-muted small ms-1">@(rule.CategoryType == CategoryType.Expense ? "kiadás" : "bevétel")</span>
+                            </td>
+                            <td>
+                                <div class="form-check form-switch m-0">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="@($"active-{rule.Id}")" checked="@rule.IsActive" disabled="@_busy"
+                                           aria-label="@($"{rule.Keyword} szabály aktív")" @onchange="e => ToggleActiveAsync(rule, e.Value is true)" />
+                                </div>
+                            </td>
+                            <td class="col-actions">
+                                <button type="button" class="icon-btn" title="Szerkesztés" aria-label="@($"{rule.Keyword} szerkesztése")" @onclick="() => OpenEdit(rule)"><i class="bi bi-pencil" aria-hidden="true"></i></button>
+                                <button type="button" class="icon-btn danger" title="Törlés" aria-label="@($"{rule.Keyword} törlése")" @onclick="() => AskDelete(rule)"><i class="bi bi-trash3" aria-hidden="true"></i></button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="ft-card-footer text-muted small">
+            A szabályok fentről lefelé értékelődnek ki, az első egyező dönt. A saját szabályaid elsőbbséget élveznek a későbbi gépi javaslatokkal szemben.
+        </div>
+    }
+</div>
+
+@if (_deleteTarget is not null)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="deleteRuleTitle">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body p-4">
+                    <span class="modal-icon"><i class="bi bi-trash3" aria-hidden="true"></i></span>
+                    <h2 class="h5 mb-2" id="deleteRuleTitle">Szabály törlése</h2>
+                    <p class="text-muted">Biztosan törölni szeretnéd a(z) <strong>@_deleteTarget.Keyword</strong> szabályt? A művelet nem vonható vissza.</p>
+                    <p class="mb-0 small text-muted">A már kategorizált tranzakciók kategóriája nem változik.</p>
+                </div>
+                <div class="modal-footer border-0 pt-0 px-4 pb-4">
+                    <button type="button" class="btn btn-outline-secondary" disabled="@_deleting" @onclick="CancelDelete">Mégse</button>
+                    <button type="button" class="btn btn-danger" disabled="@_deleting" @onclick="ConfirmDeleteAsync">
+                        @if (_deleting)
+                        {
+                            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                        }
+                        Törlés
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<CategorizationRuleDto> _rules = new();
+    private List<CategoryDto> _categories = new();
+    private RuleFormModel _model = new();
+    private List<string> _formErrors = new();
+    private string? _pageError;
+    private string? _success;
+    private Guid? _editingId;
+    private bool _formOpen;
+    private bool _loading = true;
+    private bool _busy;
+
+    private CategorizationRuleDto? _deleteTarget;
+    private bool _deleting;
+
+    private IEnumerable<CategoryDto> CategoriesOf(CategoryType type)
+        => _categories.Where(c => c.Type == type).OrderBy(c => c.Name, StringComparer.CurrentCultureIgnoreCase);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var categories = await CategoriesApi.GetAllAsync();
+        if (categories.IsUnauthorized)
+        {
+            await SignOutAsync();
+            return;
+        }
+
+        if (categories.IsSuccess)
+        {
+            _categories = categories.Value!;
+        }
+        else
+        {
+            _pageError = string.Join(" ", categories.Messages);
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var result = await Api.GetAllAsync();
+        if (result.IsUnauthorized)
+        {
+            await SignOutAsync();
+            return;
+        }
+
+        if (result.IsSuccess)
+        {
+            _rules = result.Value!;
+        }
+        else
+        {
+            _pageError = string.Join(" ", result.Messages);
+        }
+
+        _loading = false;
+    }
+
+    private void OpenCreate()
+    {
+        _success = null;
+        _editingId = null;
+        _model = new RuleFormModel();
+        _formErrors = new List<string>();
+        _formOpen = true;
+    }
+
+    private void OpenEdit(CategorizationRuleDto rule)
+    {
+        _success = null;
+        _editingId = rule.Id;
+        _model = RuleFormModel.From(rule);
+        _formErrors = new List<string>();
+        _formOpen = true;
+    }
+
+    private void CloseForm()
+    {
+        _formOpen = false;
+        _editingId = null;
+        _formErrors = new List<string>();
+    }
+
+    private async Task SaveAsync()
+    {
+        _busy = true;
+        _formErrors = new List<string>();
+
+        var isEdit = _editingId is not null;
+        var result = isEdit
+            ? await Api.UpdateAsync(_editingId!.Value, _model.ToUpdateCommand())
+            : await Api.CreateAsync(_model.ToCreateCommand());
+
+        _busy = false;
+
+        if (result.IsUnauthorized)
+        {
+            await SignOutAsync();
+            return;
+        }
+
+        if (!result.IsSuccess)
+        {
+            _formErrors = result.Messages.ToList();
+            return;
+        }
+
+        CloseForm();
+        _success = isEdit ? "A szabály módosítása sikeres." : "A szabály létrehozása sikeres.";
+        await LoadAsync();
+    }
+
+    // UC-16: aktiválás / deaktiválás.
+    private async Task ToggleActiveAsync(CategorizationRuleDto rule, bool isActive)
+    {
+        _success = null;
+        _pageError = null;
+        _busy = true;
+
+        var result = await Api.SetActiveAsync(rule.Id, isActive);
+        _busy = false;
+
+        if (!await HandleResultAsync(result.IsUnauthorized, result.IsSuccess, result.Messages))
+        {
+            await LoadAsync();
+            return;
+        }
+
+        _success = isActive ? "A szabály aktiválva." : "A szabály deaktiválva.";
+        await LoadAsync();
+    }
+
+    // UC-16: prioritás módosítása a sorrend módosításával. A lista kiértékelési sorrendben van (magasabb prioritás elöl),
+    // ezért a „feljebb” nagyobb prioritást jelent. Eltérő prioritásnál a két szabály prioritást cserél;
+    // azonos prioritásnál a mozgó (vagy a megelőzni kívánt) szabály prioritása eggyel nő.
+    private async Task MoveAsync(int index, int direction)
+    {
+        var targetIndex = index + direction;
+        if (targetIndex < 0 || targetIndex >= _rules.Count)
+        {
+            return;
+        }
+
+        var rule = _rules[index];
+        var other = _rules[targetIndex];
+
+        _success = null;
+        _pageError = null;
+        _busy = true;
+
+        var ok = true;
+        if (rule.Priority == other.Priority)
+        {
+            // Feljebb: a mozgó szabály kerül a másik elé; lejjebb: a másik szabály kerül a mozgó elé.
+            var raised = direction < 0 ? rule : other;
+            var newPriority = Math.Min(raised.Priority + 1, FinanceTracker.Domain.Entities.CategorizationRule.MaxPriority);
+            var result = await Api.SetPriorityAsync(raised.Id, newPriority);
+            ok = await HandleResultAsync(result.IsUnauthorized, result.IsSuccess, result.Messages);
+        }
+        else
+        {
+            var first = await Api.SetPriorityAsync(rule.Id, other.Priority);
+            ok = await HandleResultAsync(first.IsUnauthorized, first.IsSuccess, first.Messages);
+            if (ok)
+            {
+                var second = await Api.SetPriorityAsync(other.Id, rule.Priority);
+                ok = await HandleResultAsync(second.IsUnauthorized, second.IsSuccess, second.Messages);
+            }
+        }
+
+        _busy = false;
+        await LoadAsync();
+    }
+
+    private async Task<bool> HandleResultAsync(bool unauthorized, bool success, IReadOnlyList<string> messages)
+    {
+        if (unauthorized)
+        {
+            await SignOutAsync();
+            return false;
+        }
+
+        if (!success)
+        {
+            _pageError = string.Join(" ", messages);
+            return false;
+        }
+
+        return true;
+    }
+
+    private void AskDelete(CategorizationRuleDto rule)
+    {
+        _success = null;
+        _pageError = null;
+        _deleteTarget = rule;
+    }
+
+    private void CancelDelete() => _deleteTarget = null;
+
+    private async Task ConfirmDeleteAsync()
+    {
+        if (_deleteTarget is null)
+        {
+            return;
+        }
+
+        _deleting = true;
+        var result = await Api.DeleteAsync(_deleteTarget.Id);
+        _deleting = false;
+
+        if (result.IsUnauthorized)
+        {
+            await SignOutAsync();
+            return;
+        }
+
+        _deleteTarget = null;
+
+        if (!result.IsSuccess)
+        {
+            _pageError = string.Join(" ", result.Messages);
+            return;
+        }
+
+        _success = "A szabály törlése sikeres.";
+        await LoadAsync();
+    }
+
+    private async Task SignOutAsync()
+    {
+        UserState.Set(null);
+        await Session.SignOutAsync();
+        Navigation.NavigateTo("login");
+    }
+}

@@ -1,5 +1,9 @@
 ﻿using FinanceTracker.API.Infrastructure;
+using FinanceTracker.Application.Common.Pagination;
 using FinanceTracker.Application.Features.Imports;
+using FinanceTracker.Application.Features.Imports.GetImport;
+using FinanceTracker.Application.Features.Imports.GetImportErrors;
+using FinanceTracker.Application.Features.Imports.GetImports;
 using FinanceTracker.Application.Features.Imports.ImportCsv;
 using FinanceTracker.Application.Features.Imports.PreviewImport;
 using Microsoft.AspNetCore.Authorization;
@@ -42,7 +46,12 @@ public sealed class PreviewImportForm
 [ApiController]
 [Authorize]
 [Route("api/imports")]
-public class ImportsController(PreviewImportHandler preview, ImportCsvHandler import) : ControllerBase
+public class ImportsController(
+    PreviewImportHandler preview,
+    ImportCsvHandler import,
+    GetImportsHandler getImports,
+    GetImportHandler getImport,
+    GetImportErrorsHandler getImportErrors) : ControllerBase
 {
     // A fájlméret-korlátot az Application ellenőrzi; a kérés korlátja ennél kicsit nagyobb (űrlapmezők, határolók).
     private const long RequestLimitBytes = ImportLimits.MaxFileSizeBytes + 512 * 1024;
@@ -96,6 +105,37 @@ public class ImportsController(PreviewImportHandler preview, ImportCsvHandler im
         return result.IsSuccess
             ? StatusCode(StatusCodes.Status201Created, result.Value)
             : this.ToProblem(result.Error!);
+    }
+
+    /// <summary>UC-14: a saját importok lapozott listája, a legutóbbi elöl.</summary>
+    [HttpGet]
+    [ProducesResponseType<PagedResult<ImportBatchDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetAll([FromQuery] GetImportsQuery query)
+    {
+        var result = await getImports.HandleAsync(query);
+        return result.IsSuccess ? Ok(result.Value) : this.ToProblem(result.Error!);
+    }
+
+    /// <summary>UC-14: egy import összesítője (fájlnév, állapot, sorok száma).</summary>
+    [HttpGet("{id:guid}")]
+    [ProducesResponseType<ImportBatchDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetById(Guid id)
+    {
+        var result = await getImport.HandleAsync(id);
+        return result.IsSuccess ? Ok(result.Value) : this.ToProblem(result.Error!);
+    }
+
+    /// <summary>UC-14: egy import soronkénti hibái, lapozva.</summary>
+    [HttpGet("{id:guid}/errors")]
+    [ProducesResponseType<PagedResult<ImportErrorDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetErrors(Guid id, [FromQuery] GetImportErrorsQuery query)
+    {
+        var result = await getImportErrors.HandleAsync(id, query);
+        return result.IsSuccess ? Ok(result.Value) : this.ToProblem(result.Error!);
     }
 
     private static FinanceTracker.Application.Common.Error MissingFile()

@@ -9,7 +9,11 @@
 
 <PageTitle>CSV-import</PageTitle>
 
-<PageHeader Title="CSV-import" Subtitle="Tranzakciók felvétele fájlból: tölts fel egy CSV-t, erősítsd meg az oszlopokat, és kész." />
+<PageHeader Title="CSV-import" Subtitle="Tranzakciók felvétele fájlból: tölts fel egy CSV-t, erősítsd meg az oszlopokat, és kész.">
+    <Actions>
+        <a class="btn btn-outline-secondary" href="imports"><i class="bi bi-clock-history" aria-hidden="true"></i> Korábbi importok</a>
+    </Actions>
+</PageHeader>
 
 <ol class="steps" aria-label="Az import lépései">
     <li class="step @StepClass(1)"><span class="step-no">@(_step > 1 ? "✓" : "1")</span> Fájl</li>
@@ -46,9 +50,10 @@
                     <li><strong>Opcionális:</strong> típus (bevétel/kiadás), pénznem, kategória neve.</li>
                     <li>Dátum például: <code>2026-11-18</code>, <code>2026. 11. 18.</code>, <code>18.11.2026</code>.</li>
                     <li>Összeg például: <code>12 345,60</code>, <code>-1500</code>, <code>1,234.50 Ft</code>. Típusoszlop nélkül a <strong>negatív</strong> összeg kiadás, a pozitív bevétel.</li>
-                    <li>A már felvett (azonos dátumú, összegű, típusú, pénznemű és leírású) tranzakciókat duplikátumként kihagyjuk.</li>
+                    <li>A már felvett (azonos dátumú, összegű, típusú, pénznemű és leírású) tranzakciókat duplikátumként kihagyjuk. Ez gyakorlati heurisztika: az eredményben látod, mely sorok maradtak ki.</li>
+                    <li>Ha nincs kategória oszlop, a <a href="rules">kategorizálási szabályaid</a> alapján kerül kategória a tranzakciókra.</li>
                 </ul>
-                <a class="btn btn-outline-primary btn-sm" href="samples/transactions-sample.csv" download>
+                <a class="btn btn-outline-primary btn-sm" href="samples/transaction-samples.csv" download>
                     <i class="bi bi-download" aria-hidden="true"></i> Mintafájl letöltése
                 </a>
             </div>
@@ -61,7 +66,7 @@ else if (_step == 2 && _preview is not null)
         <div class="ft-card-header">
             <div>
                 <h2 class="ft-card-title"><i class="bi bi-file-earmark-spreadsheet me-1" aria-hidden="true"></i> @_preview.FileName</h2>
-                <div class="text-muted small">@_preview.TotalRows adatsor · @_preview.Headers.Count oszlop · elválasztó: @DelimiterName(_preview.Delimiter)</div>
+                <div class="text-muted small">@_preview.TotalRows adatsor · @_preview.Headers.Count oszlop · elválasztó: @ImportDisplay.DelimiterName(_preview.Delimiter)</div>
             </div>
             <button type="button" class="btn btn-outline-secondary btn-sm" disabled="@_busy" @onclick="Reset">Másik fájl</button>
         </div>
@@ -126,7 +131,7 @@ else if (_step == 2 && _preview is not null)
                     <select id="delimiter" class="form-select" value="@_delimiter" @onchange="OnDelimiterChangedAsync" disabled="@_busy">
                         @foreach (var option in Enum.GetValues<ImportDelimiter>())
                         {
-                            <option value="@option">@DelimiterName(option)</option>
+                            <option value="@option">@ImportDisplay.DelimiterName(option)</option>
                         }
                     </select>
                     <div class="form-text">Csak akkor módosítsd, ha az oszlopok rosszul váltak szét.</div>
@@ -167,8 +172,8 @@ else if (_step == 2 && _preview is not null)
 }
 else if (_step == 3 && _result is not null)
 {
-    <StatusMessage Kind="@ResultKind(_result.Status)">
-        <strong>@ResultTitle(_result.Status)</strong>
+    <StatusMessage Kind="@ImportDisplay.StatusKind(_result.Status)">
+        <strong>@ImportDisplay.ResultTitle(_result.Status)</strong>
         <span> @_result.FileName</span>
     </StatusMessage>
 
@@ -223,8 +228,8 @@ else if (_step == 3 && _result is not null)
                         @foreach (var error in _result.Errors)
                         {
                             <tr>
-                                <td class="date-cell">@(error.RowNumber == 0 ? "Fájl" : error.RowNumber.ToString())</td>
-                                <td><span class="chip chip-danger">@ErrorLabel(error.ErrorCode)</span></td>
+                                <td class="date-cell">@ImportDisplay.RowLabel(error.RowNumber)</td>
+                                <td><span class="chip chip-danger">@ImportDisplay.ErrorLabel(error.ErrorCode)</span></td>
                                 <td>@error.ErrorMessage</td>
                             </tr>
                         }
@@ -240,6 +245,7 @@ else if (_step == 3 && _result is not null)
 
     <div class="d-flex flex-wrap gap-2">
         <a class="btn btn-primary" href="transactions"><i class="bi bi-receipt" aria-hidden="true"></i> Tranzakciók megtekintése</a>
+        <a class="btn btn-outline-primary" href="@($"imports/{_result.Id}")"><i class="bi bi-card-checklist" aria-hidden="true"></i> Az import részletei</a>
         <button type="button" class="btn btn-outline-secondary" @onclick="Reset"><i class="bi bi-arrow-repeat" aria-hidden="true"></i> Új import</button>
     </div>
 }
@@ -452,44 +458,6 @@ else if (_step == 3 && _result is not null)
         _delimiter = ImportDelimiter.Auto;
         _errors = new List<string>();
     }
-
-    private static string DelimiterName(ImportDelimiter delimiter) => delimiter switch
-    {
-        ImportDelimiter.Comma => "vessző (,)",
-        ImportDelimiter.Semicolon => "pontosvessző (;)",
-        ImportDelimiter.Tab => "tabulátor",
-        ImportDelimiter.Pipe => "függőleges vonal (|)",
-        _ => "automatikus"
-    };
-
-    private static string ResultKind(ImportBatchStatus status) => status switch
-    {
-        ImportBatchStatus.Completed => "success",
-        ImportBatchStatus.PartiallyCompleted => "warning",
-        _ => "danger"
-    };
-
-    private static string ResultTitle(ImportBatchStatus status) => status switch
-    {
-        ImportBatchStatus.Completed => "Az import sikeresen lefutott.",
-        ImportBatchStatus.PartiallyCompleted => "Az import részben sikerült: a hibás sorok kimaradtak.",
-        ImportBatchStatus.Failed => "Az import sikertelen.",
-        _ => "Az import folyamatban van."
-    };
-
-    private static string ErrorLabel(string code) => code switch
-    {
-        ImportErrorCodes.InvalidFile => "Fájl szerkezete",
-        ImportErrorCodes.InvalidRow => "Oszlopszám",
-        ImportErrorCodes.InvalidDate => "Dátum",
-        ImportErrorCodes.InvalidAmount => "Összeg",
-        ImportErrorCodes.MissingDescription => "Leírás hiányzik",
-        ImportErrorCodes.InvalidDescription => "Leírás",
-        ImportErrorCodes.InvalidCurrency => "Pénznem",
-        ImportErrorCodes.InvalidType => "Típus",
-        ImportErrorCodes.InvalidCategory => "Kategória",
-        _ => code
-    };
 
     private async Task SignOutAsync()
     {

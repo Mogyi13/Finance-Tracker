@@ -50,5 +50,6 @@ public sealed class CategoryRepository(ApplicationDbContext db) : ICategoryRepos
                            && (excludeCategoryId == null || c.Id != excludeCategoryId));
 
     public async Task<bool> IsInUseAsync(Guid categoryId)
-        => await db.Transactions.AsNoTracking().AnyAsync(t => t.CategoryId == categoryId);
+        => await db.Transactions.AsNoTracking().AnyAsync(t => t.CategoryId == categoryId)
+           || await db.CategorizationRules.AsNoTracking().AnyAsync(r => r.CategoryId == categoryId);
 }

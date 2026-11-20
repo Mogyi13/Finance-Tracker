@@ -17,6 +17,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
     public DbSet<ImportError> ImportErrors => Set<ImportError>();
 
+    public DbSet<CategorizationRule> CategorizationRules => Set<CategorizationRule>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);

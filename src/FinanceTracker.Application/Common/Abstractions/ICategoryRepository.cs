@@ -22,6 +22,6 @@ public interface ICategoryRepository
     /// </summary>
     Task<bool> NameExistsAsync(Guid userId, string name, CategoryType type, Guid? excludeCategoryId = null);
 
-    /// <summary>Hivatkozik-e a kategóriára tranzakció (később költségkeret is).</summary>
+    /// <summary>Hivatkozik-e a kategóriára tranzakció vagy kategorizálási szabály (később költségkeret is).</summary>
     Task<bool> IsInUseAsync(Guid categoryId);
 }

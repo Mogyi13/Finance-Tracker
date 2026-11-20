@@ -21,6 +21,7 @@ builder.Services.AddHttpClient<AuthApiClient>(client => client.BaseAddress = new
 builder.Services.AddHttpClient<TransactionApiClient>(client => client.BaseAddress = new Uri(apiBaseUrl));
 builder.Services.AddHttpClient<CategoryApiClient>(client => client.BaseAddress = new Uri(apiBaseUrl));
 builder.Services.AddHttpClient<ImportApiClient>(client => client.BaseAddress = new Uri(apiBaseUrl));
+builder.Services.AddHttpClient<CategorizationRuleApiClient>(client => client.BaseAddress = new Uri(apiBaseUrl));
 
 var app = builder.Build();
 
