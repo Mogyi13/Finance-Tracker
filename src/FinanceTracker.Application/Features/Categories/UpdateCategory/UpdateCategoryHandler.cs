@@ -41,7 +41,7 @@ public sealed class UpdateCategoryHandler(ICurrentUser currentUser, ICategoryRep
             // A típus csak akkor változhat, ha ez nem teszi érvénytelenné a már hozzárendelt tranzakciókat.
             if (command.Type != category.Type && await categories.IsInUseAsync(category.Id))
             {
-                errors.Add("type", "A kategória típusa nem módosítható, mert tranzakciók vagy kategorizálási szabályok hivatkoznak rá.");
+                errors.Add("type", "A kategória típusa nem módosítható, mert tranzakciók, kategorizálási szabályok vagy kategorizálási visszajelzések hivatkoznak rá.");
             }
         }
 

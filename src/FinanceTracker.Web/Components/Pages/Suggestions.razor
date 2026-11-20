@@ -1,0 +1,208 @@
+﻿@page "/suggestions"
+@attribute [Authorize]
+@using FinanceTracker.Application.Features.Categorization.GetSuggestions
+@using FinanceTracker.Application.Features.Categorization.Ml
+@inject CategorizationApiClient Api
+@inject CategoryApiClient CategoriesApi
+@inject JwtAuthenticationStateProvider Session
+@inject NavigationManager Navigation
+@inject UserDisplayState UserState
+
+<PageTitle>Kategóriajavaslatok</PageTitle>
+
+<PageHeader Title="Kategóriajavaslatok" Subtitle="A kategorizálatlan tranzakcióidhoz a rendszer javaslatot tud adni. Erősítsd meg, vagy válassz másik kategóriát.">
+    <Actions>
+        <button type="button" class="btn btn-outline-secondary" disabled="@_loading" @onclick="LoadAsync">
+            <i class="bi bi-arrow-clockwise" aria-hidden="true"></i> Frissítés
+        </button>
+    </Actions>
+</PageHeader>
+
+@if (_message is not null)
+{
+    <StatusMessage Kind="success">@_message</StatusMessage>
+}
+
+@if (_error is not null)
+{
+    <StatusMessage Kind="danger">@_error</StatusMessage>
+}
+
+<div class="ft-card">
+    @if (_loading && _data is null)
+    {
+        <LoadingState />
+    }
+    else if (_data is not null)
+    {
+        if (_data.UncategorizedCount == 0)
+        {
+            <EmptyState Icon="bi-check2-circle" Title="Minden tranzakciód kategorizált" Text="Nincs megerősítésre váró javaslat." />
+        }
+        else if (_items.Count == 0)
+        {
+            <EmptyState Icon="bi-lightbulb" Title="Most nincs javaslat" Text="@NoSuggestionText">
+                <a class="btn btn-outline-primary" href="transactions">Tranzakciók</a>
+                <a class="btn btn-outline-primary" href="rules">Szabályok</a>
+            </EmptyState>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="ft-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Dátum</th>
+                            <th scope="col">Tranzakció</th>
+                            <th scope="col">Javasolt kategória</th>
+                            <th scope="col" class="text-end">Összeg</th>
+                            <th scope="col" class="col-suggest"><span class="visually-hidden">Műveletek</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in _items)
+                        {
+                            var transaction = item.Transaction;
+                            var prediction = item.Prediction;
+                            var income = transaction.Type == TransactionType.Income;
+                            <tr>
+                                <td class="date-cell">@TransactionFormat.Date(transaction.TransactionDate)</td>
+                                <td>
+                                    <div class="tx-title">@transaction.Description</div>
+                                    <div class="tx-sub">@(income ? "Bevétel" : "Kiadás")</div>
+                                </td>
+                                <td>
+                                    <div class="suggest-cell">
+                                        <span class="chip">@prediction.CategoryName</span>
+                                        <span class="chip @PredictionDisplay.LevelChipClass(prediction.Level)" title="@PredictionDisplay.SourceText(prediction.Source)">
+                                            @PredictionDisplay.Percent(prediction.Confidence) · @PredictionDisplay.LevelText(prediction.Level)
+                                        </span>
+                                    </div>
+                                </td>
+                                <td class="text-end amount @(income ? "amount-income" : "amount-expense")">@TransactionFormat.Amount(transaction)</td>
+                                <td class="col-suggest">
+                                    <div class="suggest-actions">
+                                        <button type="button" class="btn btn-primary btn-sm" disabled="@(_busyId is not null)" @onclick="() => AcceptAsync(item)">
+                                            <i class="bi bi-check-lg" aria-hidden="true"></i> Elfogadom
+                                        </button>
+                                        <select class="form-select form-select-sm" aria-label="Másik kategória" disabled="@(_busyId is not null)"
+                                                @onchange="e => OtherAsync(item, e)">
+                                            <option value="">Másik kategória…</option>
+                                            @foreach (var category in CategoriesFor(transaction.Type))
+                                            {
+                                                <option value="@category.Id">@category.Name</option>
+                                            }
+                                        </select>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="ft-card-footer">
+                <div class="text-muted">
+                    @_items.Count javaslat · @_data.UncategorizedCount kategorizálatlan tranzakció@(_data.ScannedCount < _data.UncategorizedCount ? $" (a legutóbbi {_data.ScannedCount} leírással rendelkezőt vizsgáltuk)" : null)
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private SuggestionsDto? _data;
+    private List<SuggestionItemDto> _items = new();
+    private List<CategoryDto> _categories = new();
+    private bool _loading = true;
+    private Guid? _busyId;
+    private string? _error;
+    private string? _message;
+
+    private string NoSuggestionText => _data?.UncategorizedCount > 0
+        ? "Vagy még nincs aktív kategorizáló modell, vagy a modell egyik tranzakcióra sem elég biztos. Hozz létre szabályokat, vagy kategorizáld kézzel őket – a kézi besorolások a modell későbbi tanításához is hozzájárulnak."
+        : string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var categories = await CategoriesApi.GetAllAsync();
+        if (categories.IsSuccess)
+        {
+            _categories = categories.Value!;
+        }
+
+        await LoadAsync();
+    }
+
+    private IEnumerable<CategoryDto> CategoriesFor(TransactionType type)
+        => _categories.Where(c => (byte)c.Type == (byte)type);
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+
+        var result = await Api.GetSuggestionsAsync();
+        if (result.IsSuccess)
+        {
+            _data = result.Value;
+            _items = _data!.Items.ToList();
+        }
+        else if (result.IsUnauthorized)
+        {
+            await SignOutAsync();
+            return;
+        }
+        else
+        {
+            _error = string.Join(" ", result.Messages);
+        }
+
+        _loading = false;
+    }
+
+    // UC-17: a javaslat elfogadása is visszajelzés (a javasolt és a választott kategória egyezik).
+    private Task AcceptAsync(SuggestionItemDto item)
+        => SubmitAsync(item, item.Prediction.CategoryId!.Value);
+
+    private async Task OtherAsync(SuggestionItemDto item, ChangeEventArgs e)
+    {
+        if (Guid.TryParse(e.Value?.ToString(), out var categoryId))
+        {
+            await SubmitAsync(item, categoryId);
+        }
+    }
+
+    private async Task SubmitAsync(SuggestionItemDto item, Guid categoryId)
+    {
+        _busyId = item.Transaction.Id;
+        _error = null;
+        _message = null;
+
+        var result = await Api.SubmitFeedbackAsync(item.Transaction.Id, categoryId, item.Prediction.CategoryId);
+        _busyId = null;
+
+        if (result.IsUnauthorized)
+        {
+            await SignOutAsync();
+            return;
+        }
+
+        if (!result.IsSuccess)
+        {
+            _error = string.Join(" ", result.Messages);
+            return;
+        }
+
+        _items.Remove(item);
+        _data = _data! with { UncategorizedCount = Math.Max(0, _data.UncategorizedCount - 1) };
+        _message = $"A tranzakció kategóriája mentve: {result.Value!.CategoryName}.";
+    }
+
+    private async Task SignOutAsync()
+    {
+        UserState.Set(null);
+        await Session.SignOutAsync();
+        Navigation.NavigateTo("login");
+    }
+}

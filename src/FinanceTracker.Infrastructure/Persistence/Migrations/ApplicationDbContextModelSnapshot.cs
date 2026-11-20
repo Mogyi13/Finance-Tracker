@@ -22,6 +22,35 @@ namespace FinanceTracker.Infrastructure.Persistence.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("FinanceTracker.Domain.Entities.CategorizationFeedback", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CorrectedCategoryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("PredictedCategoryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TransactionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CorrectedCategoryId");
+
+                    b.HasIndex("PredictedCategoryId");
+
+                    b.HasIndex("TransactionId");
+
+                    b.ToTable("CategorizationFeedback", (string)null);
+                });
+
             modelBuilder.Entity("FinanceTracker.Domain.Entities.CategorizationRule", b =>
                 {
                     b.Property<Guid>("Id")
@@ -240,6 +269,85 @@ namespace FinanceTracker.Infrastructure.Persistence.Migrations
                     b.HasIndex("ImportBatchId", "RowNumber");
 
                     b.ToTable("ImportErrors", (string)null);
+                });
+
+            modelBuilder.Entity("FinanceTracker.Domain.Entities.MlModelVersion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Accuracy")
+                        .HasPrecision(8, 6)
+                        .HasColumnType("decimal(8,6)");
+
+                    b.Property<DateTime?>("ActivatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("AveragePredictionMs")
+                        .HasPrecision(12, 4)
+                        .HasColumnType("decimal(12,4)");
+
+                    b.Property<decimal?>("BaselineAccuracy")
+                        .HasPrecision(8, 6)
+                        .HasColumnType("decimal(8,6)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("EvaluationJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("F1Score")
+                        .HasPrecision(8, 6)
+                        .HasColumnType("decimal(8,6)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("MeetsCriteria")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ModelPath")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<decimal>("Precision")
+                        .HasPrecision(8, 6)
+                        .HasColumnType("decimal(8,6)");
+
+                    b.Property<decimal>("Recall")
+                        .HasPrecision(8, 6)
+                        .HasColumnType("decimal(8,6)");
+
+                    b.Property<int>("TestDataCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TrainingDataCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Version")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsActive")
+                        .IsUnique()
+                        .HasDatabaseName("UX_MLModelVersions_SingleActive")
+                        .HasFilter("[IsActive] = 1");
+
+                    b.HasIndex("Version")
+                        .IsUnique();
+
+                    b.ToTable("MLModelVersions", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_MLModelVersions_ActiveMeetsCriteria", "[IsActive] = 0 OR [MeetsCriteria] = 1");
+
+                            t.HasCheckConstraint("CK_MLModelVersions_Metrics", "[Accuracy] BETWEEN 0 AND 1 AND [Precision] BETWEEN 0 AND 1 AND [Recall] BETWEEN 0 AND 1 AND [F1Score] BETWEEN 0 AND 1");
+                        });
                 });
 
             modelBuilder.Entity("FinanceTracker.Domain.Entities.Transaction", b =>
@@ -523,6 +631,26 @@ namespace FinanceTracker.Infrastructure.Persistence.Migrations
                     b.HasKey("UserId", "LoginProvider", "Name");
 
                     b.ToTable("AspNetUserTokens", (string)null);
+                });
+
+            modelBuilder.Entity("FinanceTracker.Domain.Entities.CategorizationFeedback", b =>
+                {
+                    b.HasOne("FinanceTracker.Domain.Entities.Category", null)
+                        .WithMany()
+                        .HasForeignKey("CorrectedCategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FinanceTracker.Domain.Entities.Category", null)
+                        .WithMany()
+                        .HasForeignKey("PredictedCategoryId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("FinanceTracker.Domain.Entities.Transaction", null)
+                        .WithMany()
+                        .HasForeignKey("TransactionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("FinanceTracker.Domain.Entities.CategorizationRule", b =>

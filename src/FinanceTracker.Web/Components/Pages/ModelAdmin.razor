@@ -1,0 +1,401 @@
+﻿@page "/admin/models"
+@attribute [Authorize]
+@using System.Text.Json
+@using FinanceTracker.Application.Features.Categorization.Ml
+@using FinanceTracker.Application.Features.Categorization.Training
+@inject ModelAdminApiClient Api
+@inject CategoryApiClient CategoriesApi
+@inject JwtAuthenticationStateProvider Session
+@inject NavigationManager Navigation
+@inject UserDisplayState UserState
+
+<PageTitle>Modellkezelés</PageTitle>
+
+<PageHeader Title="Modellkezelés" Subtitle="A kategorizáló modell tanítása, kiértékelése és aktiválása (csak üzemeltetőknek).">
+    <Actions>
+        @if (!_forbidden)
+        {
+            <button type="button" class="btn btn-primary" disabled="@(_busy || _loading)" @onclick="TrainAsync">
+                @if (_training)
+                {
+                    <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                    <span>Tanítás folyamatban…</span>
+                }
+                else
+                {
+                    <i class="bi bi-cpu" aria-hidden="true"></i>
+                    <span>Új modell tanítása</span>
+                }
+            </button>
+        }
+    </Actions>
+</PageHeader>
+
+@if (_message is not null)
+{
+    <StatusMessage Kind="success">@_message</StatusMessage>
+}
+
+@if (_error is not null)
+{
+    <StatusMessage Kind="danger">@_error</StatusMessage>
+}
+
+@if (_forbidden)
+{
+    <div class="ft-card">
+        <EmptyState Icon="bi-shield-lock" Title="Nincs jogosultságod" Text="A modellkezelés csak a konfigurációban megnevezett üzemeltetőknek érhető el (Categorization:Ml:AdminEmails). Az API újraindítása után jelentkezz be újra." />
+    </div>
+}
+else
+{
+    <div class="ft-card">
+        @if (_loading)
+        {
+            <LoadingState />
+        }
+        else if (_versions.Count == 0)
+        {
+            <EmptyState Icon="bi-cpu" Title="Még nincs betanított modell" Text="Az „Új modell tanítása” gomb a kézzel kategorizált tranzakciókból tanít és kiértékel. Az új modell inaktív, aktiválni külön kell." />
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="ft-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Verzió</th>
+                            <th scope="col">Létrehozva</th>
+                            <th scope="col" class="text-end">Pontosság</th>
+                            <th scope="col" class="text-end">F1</th>
+                            <th scope="col" class="text-end">Tanító / teszt</th>
+                            <th scope="col">Feltételek</th>
+                            <th scope="col">Állapot</th>
+                            <th scope="col" class="col-actions"><span class="visually-hidden">Műveletek</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var v in _versions)
+                        {
+                            <tr class="@(_selected?.Version.Id == v.Id ? "row-selected" : null)">
+                                <td><code>@v.Version</code></td>
+                                <td class="date-cell">@v.CreatedAt.ToLocalTime().ToString("yyyy. MM. dd. HH:mm", TransactionFormat.Hu)</td>
+                                <td class="text-end">@Pct((double)v.Accuracy)</td>
+                                <td class="text-end">@Pct((double)v.F1Score)</td>
+                                <td class="text-end">@v.TrainingDataCount / @v.TestDataCount</td>
+                                <td>
+                                    @if (v.MeetsCriteria)
+                                    {
+                                        <span class="chip chip-success">Megfelel</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="chip chip-danger">Nem felel meg</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (v.IsActive)
+                                    {
+                                        <span class="chip chip-info">Aktív</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="chip chip-muted">Inaktív</span>
+                                    }
+                                </td>
+                                <td class="col-actions">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" disabled="@_busy" @onclick="() => SelectAsync(v.Id)">Részletek</button>
+                                    @if (v.IsActive)
+                                    {
+                                        <button type="button" class="btn btn-outline-danger btn-sm" disabled="@_busy" @onclick="() => DeactivateAsync(v)">Kikapcsolás</button>
+                                    }
+                                    else if (v.MeetsCriteria)
+                                    {
+                                        <button type="button" class="btn btn-primary btn-sm" disabled="@_busy" @onclick="() => ActivateAsync(v)">Aktiválás</button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+
+    @if (_selected is not null)
+    {
+        var v = _selected.Version;
+        <h2 class="h5 mt-4 mb-3">Kiértékelés – <code>@v.Version</code></h2>
+
+        @if (_report is null)
+        {
+            <StatusMessage Kind="warning">Ehhez a verzióhoz nincs részletes kiértékelési jelentés.</StatusMessage>
+        }
+        else
+        {
+            <div class="stat-grid stat-grid-4">
+                <div class="ft-card stat-card">
+                    <span class="stat-icon green"><i class="bi bi-bullseye" aria-hidden="true"></i></span>
+                    <div><div class="stat-label">Pontosság</div><div class="stat-value">@Pct(_report.Model.Accuracy)</div></div>
+                </div>
+                <div class="ft-card stat-card">
+                    <span class="stat-icon indigo"><i class="bi bi-graph-up" aria-hidden="true"></i></span>
+                    <div><div class="stat-label">Makro F1</div><div class="stat-value">@Pct(_report.Model.MacroF1)</div></div>
+                </div>
+                <div class="ft-card stat-card">
+                    <span class="stat-icon amber"><i class="bi bi-stopwatch" aria-hidden="true"></i></span>
+                    <div><div class="stat-label">Átlagos predikciós idő</div><div class="stat-value">@_report.AveragePredictionMs.ToString("0.###", TransactionFormat.Hu) ms</div></div>
+                </div>
+                <div class="ft-card stat-card">
+                    <span class="stat-icon indigo"><i class="bi bi-database" aria-hidden="true"></i></span>
+                    <div><div class="stat-label">Tanító / teszt példa</div><div class="stat-value">@_report.TrainingCount / @_report.TestCount</div></div>
+                </div>
+            </div>
+
+            <div class="ft-card mb-4">
+                <div class="ft-card-header"><h3 class="ft-card-title">Aktiválási feltételek</h3></div>
+                <div class="table-responsive">
+                    <table class="ft-table">
+                        <thead>
+                            <tr><th scope="col">Feltétel</th><th scope="col">Előírt</th><th scope="col">Mért</th><th scope="col">Eredmény</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var c in _report.Criteria)
+                            {
+                                <tr>
+                                    <td>@c.Name</td>
+                                    <td>@c.Required</td>
+                                    <td>@c.Actual</td>
+                                    <td><span class="chip @(c.Passed ? "chip-success" : "chip-danger")">@(c.Passed ? "Megfelel" : "Nem felel meg")</span></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="ft-card mb-4">
+                <div class="ft-card-header"><h3 class="ft-card-title">Összehasonlítás</h3></div>
+                <div class="table-responsive">
+                    <table class="ft-table">
+                        <tbody>
+                            <tr><td>Szabályalapú alapmegoldás pontossága</td><td class="text-end">@Pct(_report.RuleBaselineAccuracy) <span class="text-muted">(lefedettség: @Pct(_report.RuleBaselineCoverage))</span></td></tr>
+                            <tr><td>„Legtöbbször előforduló kategória” tippelése</td><td class="text-end">@Pct(_report.MajorityClassAccuracy)</td></tr>
+                            <tr><td>Aktív modell pontossága ugyanazon a tesztadaton</td><td class="text-end">@(_report.ActiveModelAccuracy is { } a ? $"{Pct(a)} ({_report.ActiveModelVersion})" : "–")</td></tr>
+                            <tr><td>Tesztszövegek átfedése a tanítószövegekkel</td><td class="text-end">@Pct(_report.TestDescriptionOverlap)</td></tr>
+                            <tr><td>Makro precision / recall</td><td class="text-end">@Pct(_report.Model.MacroPrecision) / @Pct(_report.Model.MacroRecall)</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="ft-card mb-4">
+                <div class="ft-card-header">
+                    <h3 class="ft-card-title">Küszöbelemzés</h3>
+                    <span class="text-muted">Ennél vagy nagyobb megbízhatóságnál a teszt tételek mekkora részére válaszol a modell, és mennyire pontosan. A végleges automatikus küszöböt ebből érdemes megválasztani.</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="ft-table">
+                        <thead>
+                            <tr><th scope="col">Küszöb</th><th scope="col" class="text-end">Lefedettség</th><th scope="col" class="text-end">Pontosság</th><th scope="col" class="text-end">Tételszám</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var t in _report.Thresholds)
+                            {
+                                <tr>
+                                    <td>≥ @t.Threshold.ToString("0.00", TransactionFormat.Hu)</td>
+                                    <td class="text-end">@Pct(t.Coverage)</td>
+                                    <td class="text-end">@(t.Accuracy is { } acc ? Pct(acc) : "–")</td>
+                                    <td class="text-end">@t.Count</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="ft-card">
+                <div class="ft-card-header"><h3 class="ft-card-title">Kategóriánként</h3></div>
+                <div class="table-responsive">
+                    <table class="ft-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Kategória</th>
+                                <th scope="col" class="text-end">Tesztpéldák</th>
+                                <th scope="col" class="text-end">Precision</th>
+                                <th scope="col" class="text-end">Recall</th>
+                                <th scope="col" class="text-end">F1</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var c in _report.Model.Classes.OrderByDescending(c => c.Support))
+                            {
+                                <tr>
+                                    <td>@CategoryName(c.CategoryId)</td>
+                                    <td class="text-end">@c.Support</td>
+                                    <td class="text-end">@Pct(c.Precision)</td>
+                                    <td class="text-end">@Pct(c.Recall)</td>
+                                    <td class="text-end">@Pct(c.F1)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+    }
+}
+
+@code {
+    private List<ModelVersionDto> _versions = new();
+    private Dictionary<Guid, string> _categoryNames = new();
+    private ModelVersionDetailsDto? _selected;
+    private ModelEvaluationReport? _report;
+
+    private bool _loading = true;
+    private bool _busy;
+    private bool _training;
+    private bool _forbidden;
+    private string? _error;
+    private string? _message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var categories = await CategoriesApi.GetAllAsync();
+        if (categories.IsSuccess)
+        {
+            _categoryNames = categories.Value!.ToDictionary(c => c.Id, c => c.Name);
+        }
+
+        await LoadAsync();
+    }
+
+    private static string Pct(double value) => value.ToString("P1", TransactionFormat.Hu);
+
+    private string CategoryName(Guid id) => _categoryNames.TryGetValue(id, out var name) ? name : id.ToString();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        var result = await Api.GetAllAsync();
+        if (await HandleFailureAsync(result.IsSuccess, result.IsUnauthorized, result.Status, result.Messages))
+        {
+            _loading = false;
+            return;
+        }
+
+        _versions = result.Value!;
+        _loading = false;
+    }
+
+    private async Task SelectAsync(Guid id)
+    {
+        _busy = true;
+        _error = null;
+        var result = await Api.GetAsync(id);
+        _busy = false;
+
+        if (await HandleFailureAsync(result.IsSuccess, result.IsUnauthorized, result.Status, result.Messages))
+        {
+            return;
+        }
+
+        _selected = result.Value;
+        _report = null;
+        if (_selected!.Evaluation is { } json)
+        {
+            try
+            {
+                _report = json.Deserialize<ModelEvaluationReport>(ModelEvaluationReport.JsonOptions);
+            }
+            catch (JsonException)
+            {
+                _error = "A kiértékelési jelentés nem olvasható.";
+            }
+        }
+    }
+
+    // UC-20: a tanítás hosszabb ideig tarthat; az eredmény új, inaktív verzió.
+    private async Task TrainAsync()
+    {
+        _busy = true;
+        _training = true;
+        _error = null;
+        _message = null;
+
+        var result = await Api.TrainAsync();
+        _busy = false;
+        _training = false;
+
+        if (await HandleFailureAsync(result.IsSuccess, result.IsUnauthorized, result.Status, result.Messages))
+        {
+            return;
+        }
+
+        _message = result.Value!.MeetsCriteria
+            ? $"A(z) {result.Value.Version} modell elkészült, és megfelel az aktiválási feltételeknek. Nézd át a részleteket, majd aktiváld."
+            : $"A(z) {result.Value.Version} modell elkészült, de nem felel meg az aktiválási feltételeknek, ezért nem aktiválható.";
+        await LoadAsync();
+        await SelectAsync(result.Value.Id);
+    }
+
+    private async Task ActivateAsync(ModelVersionDto version)
+    {
+        _busy = true;
+        _error = null;
+        _message = null;
+        var result = await Api.ActivateAsync(version.Id);
+        _busy = false;
+
+        if (await HandleFailureAsync(result.IsSuccess, result.IsUnauthorized, result.Status, result.Messages))
+        {
+            return;
+        }
+
+        _message = $"A(z) {version.Version} modell aktív: az új tranzakciók és importok ezt használják.";
+        await LoadAsync();
+    }
+
+    private async Task DeactivateAsync(ModelVersionDto version)
+    {
+        _busy = true;
+        _error = null;
+        _message = null;
+        var result = await Api.DeactivateAsync(version.Id);
+        _busy = false;
+
+        if (await HandleFailureAsync(result.IsSuccess, result.IsUnauthorized, result.Status, result.Messages))
+        {
+            return;
+        }
+
+        _message = "A modell kikapcsolva: ezután csak a szabályok kategorizálnak automatikusan.";
+        await LoadAsync();
+    }
+
+    /// <summary>Közös hibakezelés; igazzal tér vissza, ha a hívás sikertelen volt (és a hibát már kezeltük).</summary>
+    private async Task<bool> HandleFailureAsync(bool success, bool unauthorized, System.Net.HttpStatusCode? status, IReadOnlyList<string> messages)
+    {
+        if (success)
+        {
+            return false;
+        }
+
+        if (unauthorized)
+        {
+            UserState.Set(null);
+            await Session.SignOutAsync();
+            Navigation.NavigateTo("login");
+        }
+        else if (status == System.Net.HttpStatusCode.Forbidden)
+        {
+            _forbidden = true;
+        }
+        else
+        {
+            _error = string.Join(" ", messages);
+        }
+
+        return true;
+    }
+}

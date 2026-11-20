@@ -2,6 +2,12 @@
 
 # This stage is used when running from VS in fast mode (Default for Debug configuration)
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
+# Az ML.NET natív függősége (libgomp), és a betanított modellek írható könyvtára (docker volume csatlakozik ide).
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libgomp1 \
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p /app/models \
+    && chown $APP_UID /app/models
 USER $APP_UID
 WORKDIR /app
 EXPOSE 8080

@@ -29,8 +29,13 @@ services:
       Jwt__Issuer: financetracker-api
       Jwt__Audience: financetracker-web
       Database__AutoMigrate: 'true'
+      # UC-20: a modellkezelő végpontokat elérő üzemeltető e-mail-címe (az .env fájlban: ML_ADMIN_EMAIL).
+      Categorization__Ml__AdminEmails__0: ${ML_ADMIN_EMAIL:-}
+      Categorization__Ml__ModelDirectory: /app/models
     ports:
       - '5080:8080'
+    volumes:
+      - mlmodels:/app/models
     depends_on:
       sqlserver:
         condition: service_healthy
@@ -49,4 +54,5 @@ services:
 
 volumes:
   sqldata:
+  mlmodels:
 

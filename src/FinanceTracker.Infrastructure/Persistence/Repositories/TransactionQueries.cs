@@ -87,6 +87,36 @@ public sealed class TransactionQueries(ApplicationDbContext db) : ITransactionQu
         return new PagedResult<TransactionDto>(items, query.Page, query.PageSize, totalCount);
     }
 
+    public async Task<UncategorizedTransactions> GetUncategorizedAsync(Guid userId, int take)
+    {
+        var uncategorized = db.Transactions.AsNoTracking().Where(t => t.UserId == userId && t.CategoryId == null);
+
+        var totalCount = await uncategorized.CountAsync();
+
+        // Leírás nélküli tranzakcióhoz nem adható javaslat, ezért csak a leírással rendelkezők kerülnek a vizsgálatba.
+        var items = await uncategorized
+            .Where(t => t.Description != null)
+            .OrderByDescending(t => t.TransactionDate)
+            .ThenByDescending(t => t.CreatedAt)
+            .ThenBy(t => t.Id)
+            .Take(take)
+            .Select(t => new TransactionDto(
+                t.Id,
+                t.Type,
+                t.Amount,
+                t.Currency,
+                t.Description,
+                t.TransactionDate,
+                t.CategoryId,
+                null,
+                t.CategorizationStatus,
+                t.CreatedAt,
+                t.UpdatedAt))
+            .ToListAsync();
+
+        return new UncategorizedTransactions(totalCount, items);
+    }
+
     /// <summary>UC-09: a megadott szűrők alkalmazása (mind ÉS kapcsolatban, a határértékek is beleértendők).</summary>
     private static IQueryable<Transaction> ApplyFilters(IQueryable<Transaction> source, GetTransactionsQuery query)
     {

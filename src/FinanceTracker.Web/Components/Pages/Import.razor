@@ -51,10 +51,13 @@
                     <li>Dátum például: <code>2026-11-18</code>, <code>2026. 11. 18.</code>, <code>18.11.2026</code>.</li>
                     <li>Összeg például: <code>12 345,60</code>, <code>-1500</code>, <code>1,234.50 Ft</code>. Típusoszlop nélkül a <strong>negatív</strong> összeg kiadás, a pozitív bevétel.</li>
                     <li>A már felvett (azonos dátumú, összegű, típusú, pénznemű és leírású) tranzakciókat duplikátumként kihagyjuk. Ez gyakorlati heurisztika: az eredményben látod, mely sorok maradtak ki.</li>
-                    <li>Ha nincs kategória oszlop, a <a href="rules">kategorizálási szabályaid</a> alapján kerül kategória a tranzakciókra.</li>
+                    <li>Ha nincs kategória oszlop, a <a href="rules">kategorizálási szabályaid</a> alapján kerül kategória a tranzakciókra; ha egy szabály sem illeszkedik, az aktív kategorizáló modell dönt (csak magas megbízhatóságnál), a többi tranzakcióhoz a <a href="suggestions">Javaslatok</a> oldalon kapsz javaslatot.</li>
                 </ul>
                 <a class="btn btn-outline-primary btn-sm" href="samples/transaction-samples.csv" download>
                     <i class="bi bi-download" aria-hidden="true"></i> Mintafájl letöltése
+                </a>
+                <a class="btn btn-outline-secondary btn-sm" href="samples/ml-training-samples.csv" download title="242 kézzel kategorizált tétel a kategorizáló modell kipróbálásához">
+                    <i class="bi bi-stars" aria-hidden="true"></i> Modelltanító mintafájl
                 </a>
             </div>
         </div>

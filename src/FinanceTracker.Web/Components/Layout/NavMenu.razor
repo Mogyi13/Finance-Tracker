@@ -1,4 +1,6 @@
-﻿<a class="brand" href="">
+﻿@inject ModelAdminApiClient ModelAdmin
+
+<a class="brand" href="">
     <BrandMark />
     <span>Finance Tracker</span>
 </a>
@@ -31,6 +33,17 @@
     <NavLink class="side-link" href="rules">
         <i class="bi bi-magic" aria-hidden="true"></i> Szabályok
     </NavLink>
+    <NavLink class="side-link" href="suggestions">
+        <i class="bi bi-lightbulb" aria-hidden="true"></i> Javaslatok
+    </NavLink>
+
+    @if (_isOperator)
+    {
+        <div class="side-section">Üzemeltetés</div>
+        <NavLink class="side-link" href="admin/models">
+            <i class="bi bi-cpu" aria-hidden="true"></i> Modellkezelés
+        </NavLink>
+    }
 
     <div class="side-section">Fiók</div>
     <NavLink class="side-link" href="profile">
@@ -39,3 +52,21 @@
 </nav>
 
 <div class="side-footer">Finance Tracker · Demo verzió</div>
+
+@code {
+    private bool _isOperator;
+
+    // A modellkezelés menüpont csak az üzemeltetőnek jelenik meg; a jogosultságot az API dönti el (másnak a végpont 403-at ad).
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var access = await ModelAdmin.HasAccessAsync();
+            if (access.IsSuccess)
+            {
+                _isOperator = true;
+                StateHasChanged();
+            }
+        }
+    }
+}

@@ -1,0 +1,243 @@
+﻿Dátum;Összeg;Leírás;Típus;Pénznem;Kategória
+2026-01-01;31070;Coop Budapest;kiadás;HUF;Élelmiszer
+2026-01-02;41750;Pékség reggeli;kiadás;HUF;Élelmiszer
+2026-01-03;32410;Közös költség április;kiadás;HUF;Lakhatás
+2026-01-06;4330;Színházjegy;kiadás;HUF;Szórakozás
+2026-01-06;41650;Kerékpár szerviz;kiadás;HUF;Közlekedés
+2026-01-08;8460;Tesco bevásárlás;kiadás;HUF;Élelmiszer
+2026-01-08;115910;Vízdíj Fővárosi Vízművek;kiadás;HUF;Lakhatás
+2026-01-08;536800;Havi fizetés;bevétel;HUF;Fizetés
+2026-01-12;10830;Online tanfolyam;kiadás;HUF;Egyéb kiadás
+2026-01-12;19210;Starbucks kávé;kiadás;HUF;Szórakozás
+2026-01-15;10080;HBO Max;kiadás;HUF;Szórakozás
+2026-01-15;12240;Gyógytorna;kiadás;HUF;Egészség
+2026-01-15;16020;Cashback jóváírás;bevétel;HUF;Egyéb bevétel
+2026-01-15;21200;Vitamin gyógyszertár;kiadás;HUF;Egészség
+2026-01-15;43860;OMV üzemanyag;kiadás;HUF;Közlekedés
+2026-01-17;11320;Penny Market;kiadás;HUF;Élelmiszer
+2026-01-19;22290;Starbucks kávé;kiadás;HUF;Szórakozás
+2026-01-20;40950;Lakbér február;kiadás;HUF;Lakhatás
+2026-01-22;32840;Telefon feltöltés;kiadás;HUF;Egyéb kiadás
+2026-01-23;63120;Kerékpár szerviz;kiadás;HUF;Közlekedés
+2026-01-26;35790;Pékség reggeli;kiadás;HUF;Élelmiszer
+2026-01-27;18010;H&M ruhavásárlás;kiadás;HUF;Egyéb kiadás
+2026-01-28;603990;Munkahelyi fizetés;bevétel;HUF;Fizetés
+2026-01-30;7700;Benu gyógyszertár;kiadás;HUF;Egészség
+2026-01-30;33280;Vízdíj Fővárosi Vízművek;kiadás;HUF;Lakhatás
+2026-01-31;101390;Szemétszállítás díj;kiadás;HUF;Lakhatás
+2026-02-02;24620;Volánbusz jegy;kiadás;HUF;Közlekedés
+2026-02-03;19090;Könyvesbolt;kiadás;HUF;Egyéb kiadás
+2026-02-04;52490;Visszatérítés;bevétel;HUF;Egyéb bevétel
+2026-02-05;26730;HBO Max;kiadás;HUF;Szórakozás
+2026-02-05;37370;Coop Pécs;kiadás;HUF;Élelmiszer
+2026-02-07;25480;Parkolási díj Debrecen;kiadás;HUF;Közlekedés
+2026-02-09;38330;Gyógytorna;kiadás;HUF;Egészség
+2026-02-13;17530;Amazon rendelés;kiadás;HUF;Egyéb kiadás
+2026-02-17;32020;Szemész vizsgálat;kiadás;HUF;Egészség
+2026-02-20;30230;Penny Market;kiadás;HUF;Élelmiszer
+2026-02-20;30970;Spar Debrecen;kiadás;HUF;Élelmiszer
+2026-02-21;32130;Visszatérítés;bevétel;HUF;Egyéb bevétel
+2026-02-23;6100;Volánbusz jegy;kiadás;HUF;Közlekedés
+2026-02-23;26480;Deichmann cipő;kiadás;HUF;Egyéb kiadás
+2026-02-24;21880;Autószerviz;kiadás;HUF;Közlekedés
+2026-02-25;10240;Deichmann cipő;kiadás;HUF;Egyéb kiadás
+2026-02-27;50500;Fűtési számla;kiadás;HUF;Lakhatás
+2026-03-01;34250;OMV üzemanyag;kiadás;HUF;Közlekedés
+2026-03-01;392710;Munkabér szeptember;bevétel;HUF;Fizetés
+2026-03-02;23290;MÁV vonatjegy;kiadás;HUF;Közlekedés
+2026-03-03;22850;Netflix előfizetés;kiadás;HUF;Szórakozás
+2026-03-03;187950;Gázszámla július;kiadás;HUF;Lakhatás
+2026-03-04;14610;Ajándék pénz;bevétel;HUF;Egyéb bevétel
+2026-03-04;32610;Gázszámla május;kiadás;HUF;Lakhatás
+2026-03-07;2520;Használt telefon eladás;bevétel;HUF;Egyéb bevétel
+2026-03-12;62380;Bolt taxi;kiadás;HUF;Közlekedés
+2026-03-16;34810;Laborvizsgálat;kiadás;HUF;Egészség
+2026-03-16;43980;Laborvizsgálat;kiadás;HUF;Egészség
+2026-03-17;15460;Kerékpár szerviz;kiadás;HUF;Közlekedés
+2026-03-18;489030;Munkabér augusztus;bevétel;HUF;Fizetés
+2026-03-20;28630;Fogorvos kezelés;kiadás;HUF;Egészség
+2026-03-20;39790;MÁV vonatjegy;kiadás;HUF;Közlekedés
+2026-03-21;15670;HBO Max;kiadás;HUF;Szórakozás
+2026-03-22;100200;MVM áramszámla;kiadás;HUF;Lakhatás
+2026-03-23;10370;Spar Eger;kiadás;HUF;Élelmiszer
+2026-03-23;36620;Edzőterem bérlet;kiadás;HUF;Egészség
+2026-03-29;30770;Online tanfolyam;kiadás;HUF;Egyéb kiadás
+2026-03-29;47820;Bolt taxi;kiadás;HUF;Közlekedés
+2026-03-30;6020;Bolt taxi;kiadás;HUF;Közlekedés
+2026-03-30;19860;Szemétszállítás díj;kiadás;HUF;Lakhatás
+2026-03-31;62060;Ajándék pénz;bevétel;HUF;Egyéb bevétel
+2026-04-02;10620;Benu gyógyszertár;kiadás;HUF;Egészség
+2026-04-04;29400;Húsbolt;kiadás;HUF;Élelmiszer
+2026-04-06;110230;Fűtési számla;kiadás;HUF;Lakhatás
+2026-04-07;51180;Telefon feltöltés;kiadás;HUF;Egyéb kiadás
+2026-04-07;134840;Fűtési számla;kiadás;HUF;Lakhatás
+2026-04-11;9090;Patika vény;kiadás;HUF;Egészség
+2026-04-12;13240;Étterem vacsora Győr;kiadás;HUF;Szórakozás
+2026-04-12;17740;Pékség reggeli;kiadás;HUF;Élelmiszer
+2026-04-18;27110;Koncertjegy;kiadás;HUF;Szórakozás
+2026-04-22;20260;Koncertjegy;kiadás;HUF;Szórakozás
+2026-04-22;26010;Posta csomag;kiadás;HUF;Egyéb kiadás
+2026-04-23;51280;Bolt taxi;kiadás;HUF;Közlekedés
+2026-04-24;45010;BKK havibérlet;kiadás;HUF;Közlekedés
+2026-04-25;32500;Coop Szeged;kiadás;HUF;Élelmiszer
+2026-04-28;9500;Coop Szeged;kiadás;HUF;Élelmiszer
+2026-05-04;16220;Laborvizsgálat;kiadás;HUF;Egészség
+2026-05-05;27020;Deichmann cipő;kiadás;HUF;Egyéb kiadás
+2026-05-10;4660;Adó-visszatérítés;bevétel;HUF;Egyéb bevétel
+2026-05-10;444780;Munkahelyi fizetés;bevétel;HUF;Fizetés
+2026-05-11;2000;Ajándék vásárlás;kiadás;HUF;Egyéb kiadás
+2026-05-16;9540;MÁV vonatjegy;kiadás;HUF;Közlekedés
+2026-05-16;25880;Spotify Premium;kiadás;HUF;Szórakozás
+2026-05-16;33280;Vízdíj Fővárosi Vízművek;kiadás;HUF;Lakhatás
+2026-05-17;19510;Pizzéria Szeged;kiadás;HUF;Szórakozás
+2026-05-17;34160;Húsbolt;kiadás;HUF;Élelmiszer
+2026-05-18;11980;Bár italok;kiadás;HUF;Szórakozás
+2026-05-18;24910;Spar Budapest;kiadás;HUF;Élelmiszer
+2026-05-22;23020;Uber út;kiadás;HUF;Közlekedés
+2026-05-23;408560;Munkahelyi fizetés;bevétel;HUF;Fizetés
+2026-05-25;94650;Albérlet január;kiadás;HUF;Lakhatás
+2026-05-30;101410;Telekom internet;kiadás;HUF;Lakhatás
+2026-05-31;16600;H&M ruhavásárlás;kiadás;HUF;Egyéb kiadás
+2026-05-31;20020;Színházjegy;kiadás;HUF;Szórakozás
+2026-05-31;54870;Visszatérítés;bevétel;HUF;Egyéb bevétel
+2026-05-31;155540;Fűtési számla;kiadás;HUF;Lakhatás
+2026-06-01;3240;Posta csomag;kiadás;HUF;Egyéb kiadás
+2026-06-01;35960;BKK havibérlet;kiadás;HUF;Közlekedés
+2026-06-01;43040;Használt telefon eladás;bevétel;HUF;Egyéb bevétel
+2026-06-02;34890;Adó-visszatérítés;bevétel;HUF;Egyéb bevétel
+2026-06-04;15550;Fűtési számla;kiadás;HUF;Lakhatás
+2026-06-05;631770;Havi fizetés;bevétel;HUF;Fizetés
+2026-06-07;37420;Penny Market;kiadás;HUF;Élelmiszer
+2026-06-08;3960;HBO Max;kiadás;HUF;Szórakozás
+2026-06-10;15280;Lidl heti bevásárlás;kiadás;HUF;Élelmiszer
+2026-06-10;80560;MVM áramszámla;kiadás;HUF;Lakhatás
+2026-06-11;35830;Autópálya matrica;kiadás;HUF;Közlekedés
+2026-06-11;50310;Lakbér május;kiadás;HUF;Lakhatás
+2026-06-11;167330;Lakbér július;kiadás;HUF;Lakhatás
+2026-06-12;44790;Szemüveg Miskolc;kiadás;HUF;Egészség
+2026-06-16;9450;Zöldséges piac;kiadás;HUF;Élelmiszer
+2026-06-16;15380;Disney+ előfizetés;kiadás;HUF;Szórakozás
+2026-06-19;3170;Steam játék;kiadás;HUF;Szórakozás
+2026-06-19;5900;Mozijegy Cinema City;kiadás;HUF;Szórakozás
+2026-06-21;20170;Bár italok;kiadás;HUF;Szórakozás
+2026-06-21;86480;Cashback jóváírás;bevétel;HUF;Egyéb bevétel
+2026-06-24;7380;Húsbolt;kiadás;HUF;Élelmiszer
+2026-06-24;12460;Színházjegy;kiadás;HUF;Szórakozás
+2026-06-25;59760;Lakbér szeptember;kiadás;HUF;Lakhatás
+2026-06-26;53800;Szemétszállítás díj;kiadás;HUF;Lakhatás
+2026-06-26;358960;Bérszámfejtés;bevétel;HUF;Fizetés
+2026-06-27;24660;Auchan hipermarket;kiadás;HUF;Élelmiszer
+2026-07-02;26160;Auchan hipermarket;kiadás;HUF;Élelmiszer
+2026-07-02;363630;Munkahelyi fizetés;bevétel;HUF;Fizetés
+2026-07-05;15210;Laborvizsgálat;kiadás;HUF;Egészség
+2026-07-06;27600;Orvosi magánrendelés;kiadás;HUF;Egészség
+2026-07-08;15010;Amazon rendelés;kiadás;HUF;Egyéb kiadás
+2026-07-08;25320;Zöldséges piac;kiadás;HUF;Élelmiszer
+2026-07-09;3790;Starbucks kávé;kiadás;HUF;Szórakozás
+2026-07-15;32440;Ajándék vásárlás;kiadás;HUF;Egyéb kiadás
+2026-07-15;85040;Használt telefon eladás;bevétel;HUF;Egyéb bevétel
+2026-07-18;12870;MÁV vonatjegy;kiadás;HUF;Közlekedés
+2026-07-19;70910;Adó-visszatérítés;bevétel;HUF;Egyéb bevétel
+2026-07-20;36410;Szemüveg Miskolc;kiadás;HUF;Egészség
+2026-07-21;563280;Fizetés utalás;bevétel;HUF;Fizetés
+2026-07-24;39880;Coop Eger;kiadás;HUF;Élelmiszer
+2026-07-24;46850;Autópálya matrica;kiadás;HUF;Közlekedés
+2026-07-29;12240;Bár italok;kiadás;HUF;Szórakozás
+2026-07-29;27520;Bár italok;kiadás;HUF;Szórakozás
+2026-07-30;10580;BKK havibérlet;kiadás;HUF;Közlekedés
+2026-07-30;11090;CBA Príma Debrecen;kiadás;HUF;Élelmiszer
+2026-07-30;27080;Pékség reggeli;kiadás;HUF;Élelmiszer
+2026-08-01;27070;IKEA bútor;kiadás;HUF;Egyéb kiadás
+2026-08-01;28620;Vízdíj Fővárosi Vízművek;kiadás;HUF;Lakhatás
+2026-08-01;83410;Vízdíj Fővárosi Vízművek;kiadás;HUF;Lakhatás
+2026-08-01;108690;Szemétszállítás díj;kiadás;HUF;Lakhatás
+2026-08-02;91590;Vízdíj Fővárosi Vízművek;kiadás;HUF;Lakhatás
+2026-08-05;44980;Szemüveg Pécs;kiadás;HUF;Egészség
+2026-08-06;34680;Reál élelmiszer;kiadás;HUF;Élelmiszer
+2026-08-10;13900;Patika vény;kiadás;HUF;Egészség
+2026-08-10;14770;Zöldséges piac;kiadás;HUF;Élelmiszer
+2026-08-10;48990;Posta csomag;kiadás;HUF;Egyéb kiadás
+2026-08-16;9840;Spotify Premium;kiadás;HUF;Szórakozás
+2026-08-20;33790;Cashback jóváírás;bevétel;HUF;Egyéb bevétel
+2026-08-22;25530;Posta csomag;kiadás;HUF;Egyéb kiadás
+2026-08-22;60640;BKK havibérlet;kiadás;HUF;Közlekedés
+2026-08-22;167190;Fűtési számla;kiadás;HUF;Lakhatás
+2026-08-23;10730;Reál élelmiszer;kiadás;HUF;Élelmiszer
+2026-08-23;12530;Orvosi magánrendelés;kiadás;HUF;Egészség
+2026-08-24;18700;H&M ruhavásárlás;kiadás;HUF;Egyéb kiadás
+2026-08-24;42250;BKK havibérlet;kiadás;HUF;Közlekedés
+2026-08-26;7960;Mozijegy Cinema City;kiadás;HUF;Szórakozás
+2026-08-26;8410;Étterem vacsora Szeged;kiadás;HUF;Szórakozás
+2026-08-26;17290;Patika vény;kiadás;HUF;Egészség
+2026-08-28;23470;Könyvesbolt;kiadás;HUF;Egyéb kiadás
+2026-08-28;34580;Bankköltség;kiadás;HUF;Egyéb kiadás
+2026-08-29;37260;Zöldséges piac;kiadás;HUF;Élelmiszer
+2026-08-30;16660;Deichmann cipő;kiadás;HUF;Egyéb kiadás
+2026-08-30;22860;Vatera eladás;bevétel;HUF;Egyéb bevétel
+2026-09-01;22980;Lidl heti bevásárlás;kiadás;HUF;Élelmiszer
+2026-09-03;9570;Étterem vacsora Miskolc;kiadás;HUF;Szórakozás
+2026-09-03;62050;Kerékpár szerviz;kiadás;HUF;Közlekedés
+2026-09-04;3880;H&M ruhavásárlás;kiadás;HUF;Egyéb kiadás
+2026-09-04;27710;Starbucks kávé;kiadás;HUF;Szórakozás
+2026-09-05;12300;Disney+ előfizetés;kiadás;HUF;Szórakozás
+2026-09-06;32080;Aldi Győr;kiadás;HUF;Élelmiszer
+2026-09-08;10460;Szemüveg Pécs;kiadás;HUF;Egészség
+2026-09-08;25090;Zöldséges piac;kiadás;HUF;Élelmiszer
+2026-09-10;14410;Színházjegy;kiadás;HUF;Szórakozás
+2026-09-12;9760;Használt telefon eladás;bevétel;HUF;Egyéb bevétel
+2026-09-12;539480;Havi fizetés;bevétel;HUF;Fizetés
+2026-09-16;20550;Pékség reggeli;kiadás;HUF;Élelmiszer
+2026-09-18;23550;Netflix előfizetés;kiadás;HUF;Szórakozás
+2026-09-20;8230;Spar Miskolc;kiadás;HUF;Élelmiszer
+2026-09-21;46230;Adó-visszatérítés;bevétel;HUF;Egyéb bevétel
+2026-09-22;53720;Bolt taxi;kiadás;HUF;Közlekedés
+2026-09-23;3160;Auchan hipermarket;kiadás;HUF;Élelmiszer
+2026-09-23;134370;Lakásbiztosítás;kiadás;HUF;Lakhatás
+2026-09-24;8640;H&M ruhavásárlás;kiadás;HUF;Egyéb kiadás
+2026-09-24;26590;Fogorvos kezelés;kiadás;HUF;Egészség
+2026-09-24;49950;Volánbusz jegy;kiadás;HUF;Közlekedés
+2026-09-25;23520;HBO Max;kiadás;HUF;Szórakozás
+2026-09-25;46530;Parkolási díj Budapest;kiadás;HUF;Közlekedés
+2026-09-26;18450;Pékség reggeli;kiadás;HUF;Élelmiszer
+2026-09-26;79780;Lakásbiztosítás;kiadás;HUF;Lakhatás
+2026-09-27;9790;Szemész vizsgálat;kiadás;HUF;Egészség
+2026-09-27;58260;Visszatérítés;bevétel;HUF;Egyéb bevétel
+2026-09-28;30450;Ajándék vásárlás;kiadás;HUF;Egyéb kiadás
+2026-09-29;65340;Albérlet november;kiadás;HUF;Lakhatás
+2026-09-30;325500;Munkahelyi fizetés;bevétel;HUF;Fizetés
+2026-10-01;14730;Kerékpár szerviz;kiadás;HUF;Közlekedés
+2026-10-01;68960;Adó-visszatérítés;bevétel;HUF;Egyéb bevétel
+2026-10-05;31880;MOL benzinkút tankolás;kiadás;HUF;Közlekedés
+2026-10-07;18130;Spotify Premium;kiadás;HUF;Szórakozás
+2026-10-07;183740;Lakásbiztosítás;kiadás;HUF;Lakhatás
+2026-10-07;407870;Bérszámfejtés;bevétel;HUF;Fizetés
+2026-10-08;6020;Kamatjóváírás;bevétel;HUF;Egyéb bevétel
+2026-10-08;17630;OMV üzemanyag;kiadás;HUF;Közlekedés
+2026-10-08;33670;Aldi Eger;kiadás;HUF;Élelmiszer
+2026-10-09;25260;Pizzéria Budapest;kiadás;HUF;Szórakozás
+2026-10-09;41700;Cashback jóváírás;bevétel;HUF;Egyéb bevétel
+2026-10-11;2990;Volánbusz jegy;kiadás;HUF;Közlekedés
+2026-10-12;34510;Parkolási díj Kecskemét;kiadás;HUF;Közlekedés
+2026-10-13;3700;Reál élelmiszer;kiadás;HUF;Élelmiszer
+2026-10-14;22180;Online tanfolyam;kiadás;HUF;Egyéb kiadás
+2026-10-14;78620;Cashback jóváírás;bevétel;HUF;Egyéb bevétel
+2026-10-14;424520;Munkabér március;bevétel;HUF;Fizetés
+2026-10-15;8380;Amazon rendelés;kiadás;HUF;Egyéb kiadás
+2026-10-21;5500;Fogorvos kezelés;kiadás;HUF;Egészség
+2026-10-22;30750;Online tanfolyam;kiadás;HUF;Egyéb kiadás
+2026-10-25;18390;Adó-visszatérítés;bevétel;HUF;Egyéb bevétel
+2026-10-25;20960;Parkolási díj Kecskemét;kiadás;HUF;Közlekedés
+2026-10-26;39140;Tesco bevásárlás;kiadás;HUF;Élelmiszer
+2026-10-31;43900;MÁV vonatjegy;kiadás;HUF;Közlekedés
+2026-11-05;34880;Online tanfolyam;kiadás;HUF;Egyéb kiadás
+2026-11-07;33080;Orvosi magánrendelés;kiadás;HUF;Egészség
+2026-11-07;37630;Vitamin gyógyszertár;kiadás;HUF;Egészség
+2026-11-12;7440;Szemüveg Győr;kiadás;HUF;Egészség
+2026-11-13;12690;Coop Kecskemét;kiadás;HUF;Élelmiszer
+2026-11-13;342860;Munkabér május;bevétel;HUF;Fizetés
+2026-11-14;81520;Fűtési számla;kiadás;HUF;Lakhatás
+2026-11-15;11860;Patika vény;kiadás;HUF;Egészség
+2026-11-15;27610;Kamatjóváírás;bevétel;HUF;Egyéb bevétel
+2026-11-15;29640;Zöldséges piac;kiadás;HUF;Élelmiszer
+2026-11-15;413570;Bérszámfejtés;bevétel;HUF;Fizetés
+2026-11-16;23550;Tesco bevásárlás;kiadás;HUF;Élelmiszer
