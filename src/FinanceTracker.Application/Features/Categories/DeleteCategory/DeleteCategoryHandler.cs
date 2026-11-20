@@ -4,7 +4,7 @@ using FinanceTracker.Application.Common.Abstractions;
 namespace FinanceTracker.Application.Features.Categories.DeleteCategory;
 
 /// <summary>
-/// UC-10: saját kategória törlése. A használatban lévő kategória nem törölhető
+/// UC-10: saját kategória törlése. A tranzakció vagy szabály által használt kategória nem törölhető
 /// (újrahozzárendelési folyamat egyelőre nincs).
 /// </summary>
 public sealed class DeleteCategoryHandler(ICurrentUser currentUser, ICategoryRepository categories)
@@ -29,7 +29,7 @@ public sealed class DeleteCategoryHandler(ICurrentUser currentUser, ICategoryRep
 
         if (await categories.IsInUseAsync(category.Id))
         {
-            return Error.Conflict("A kategória nem törölhető, mert tranzakciók hivatkoznak rá.");
+            return Error.Conflict("A kategória nem törölhető, mert tranzakciók vagy kategorizálási szabályok hivatkoznak rá.");
         }
 
         await categories.DeleteAsync(category);

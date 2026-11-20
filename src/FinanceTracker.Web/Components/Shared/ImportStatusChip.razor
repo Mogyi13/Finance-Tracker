@@ -1,0 +1,9 @@
+﻿<span class="chip chip-@Kind">@Text</span>
+
+@code {
+    [Parameter, EditorRequired] public ImportBatchStatus Status { get; set; }
+
+    private string Kind => ImportDisplay.StatusKind(Status);
+
+    private string Text => ImportDisplay.StatusText(Status);
+}

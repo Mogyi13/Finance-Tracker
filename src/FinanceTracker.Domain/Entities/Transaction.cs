@@ -34,6 +34,12 @@ public sealed class Transaction
 
     public CategorizationStatus CategorizationStatus { get; private set; }
 
+    /// <summary>
+    /// A duplikációfelismeréshez használt SHA-256 ujjlenyomat (64 hexa karakter), lásd <see cref="TransactionFingerprint"/>.
+    /// A korábban rögzített tranzakcióknál NULL lehet; ezeket a duplikációfelismerés menet közben számolja ki.
+    /// </summary>
+    public string? Fingerprint { get; private set; }
+
     /// <summary>Létrehozás időpontja (UTC).</summary>
     public DateTime CreatedAt { get; private set; }
 
@@ -134,6 +140,7 @@ public sealed class Transaction
         Currency = details.Currency;
         Description = details.Description;
         TransactionDate = details.Date;
+        Fingerprint = TransactionFingerprint.Compute(details.Date, details.Type, details.Amount, details.Currency, details.Description);
     }
 
     private void EnsureCategoryUsable(Category category, TransactionType type)

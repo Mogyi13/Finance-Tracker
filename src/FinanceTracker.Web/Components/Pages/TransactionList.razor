@@ -189,7 +189,13 @@ else if (Saved == "updated")
                                 <td>
                                     @if (transaction.CategoryName is not null)
                                     {
-                                        <span class="chip">@transaction.CategoryName</span>
+                                        <span class="chip" title="@(transaction.CategorizationStatus == CategorizationStatus.RuleBased ? "Szabály alapján kategorizálva" : null)">
+                                            @transaction.CategoryName
+                                            @if (transaction.CategorizationStatus == CategorizationStatus.RuleBased)
+                                            {
+                                                <i class="bi bi-magic" aria-hidden="true"></i>
+                                            }
+                                        </span>
                                     }
                                     else
                                     {

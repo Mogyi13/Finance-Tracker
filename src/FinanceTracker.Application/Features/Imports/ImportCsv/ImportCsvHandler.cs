@@ -4,6 +4,7 @@ using FinanceTracker.Application.Features.Transactions;
 using FinanceTracker.Domain.Common;
 using FinanceTracker.Domain.Entities;
 using FinanceTracker.Domain.Enums;
+using FinanceTracker.Domain.ValueObjects;
 
 namespace FinanceTracker.Application.Features.Imports.ImportCsv;
 
@@ -124,12 +125,19 @@ public sealed class ImportCsvHandler(
         {
             var from = validRows.Min(r => r.Details.Date);
             var to = validRows.Max(r => r.Details.Date);
-            var existing = new Dictionary<string, int>(await imports.GetExistingFingerprintCountsAsync(userId, from, to));
 
-            foreach (var row in validRows)
+            var fingerprints = validRows
+                .Select(r => FinanceTracker.Application.Features.Transactions.TransactionFingerprint.Compute(
+                    r.Details.Date, r.Details.Type, r.Details.Amount, r.Details.Currency, r.Details.Description))
+                .ToList();
+
+            var existing = new Dictionary<string, int>(
+                await imports.GetExistingFingerprintCountsAsync(userId, from, to, fingerprints.Distinct().ToList()));
+
+            for (var i = 0; i < validRows.Count; i++)
             {
-                var fingerprint = TransactionFingerprint.Compute(
-                    row.Details.Date, row.Details.Type, row.Details.Amount, row.Details.Currency, row.Details.Description);
+                var row = validRows[i];
+                var fingerprint = fingerprints[i];
 
                 if (existing.TryGetValue(fingerprint, out var remaining) && remaining > 0)
                 {

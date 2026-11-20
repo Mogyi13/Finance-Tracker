@@ -22,6 +22,52 @@ namespace FinanceTracker.Infrastructure.Persistence.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("FinanceTracker.Domain.Entities.CategorizationRule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CategoryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Keyword")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<byte>("MatchType")
+                        .HasColumnType("tinyint");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoryId");
+
+                    b.HasIndex("UserId", "IsActive", "Priority");
+
+                    b.ToTable("CategorizationRules", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_CategorizationRules_MatchType", "[MatchType] IN (1, 2, 3)");
+
+                            t.HasCheckConstraint("CK_CategorizationRules_Priority", "[Priority] BETWEEN 0 AND 1000000");
+                        });
+                });
+
             modelBuilder.Entity("FinanceTracker.Domain.Entities.Category", b =>
                 {
                     b.Property<Guid>("Id")
@@ -226,6 +272,12 @@ namespace FinanceTracker.Infrastructure.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<string>("Fingerprint")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("char(64)")
+                        .IsFixedLength();
+
                     b.Property<byte>("Source")
                         .HasColumnType("tinyint");
 
@@ -250,6 +302,9 @@ namespace FinanceTracker.Infrastructure.Persistence.Migrations
                     b.HasIndex("UserId", "CategoryId", "TransactionDate");
 
                     b.HasIndex("UserId", "Type", "TransactionDate");
+
+                    b.HasIndex("UserId", "Fingerprint")
+                        .HasFilter("[Fingerprint] IS NOT NULL");
 
                     b.ToTable("Transactions", null, t =>
                         {
@@ -468,6 +523,21 @@ namespace FinanceTracker.Infrastructure.Persistence.Migrations
                     b.HasKey("UserId", "LoginProvider", "Name");
 
                     b.ToTable("AspNetUserTokens", (string)null);
+                });
+
+            modelBuilder.Entity("FinanceTracker.Domain.Entities.CategorizationRule", b =>
+                {
+                    b.HasOne("FinanceTracker.Domain.Entities.Category", null)
+                        .WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FinanceTracker.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("FinanceTracker.Domain.Entities.Category", b =>

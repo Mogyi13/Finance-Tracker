@@ -1,0 +1,199 @@
+﻿@page "/imports/{Id:guid}"
+@attribute [Authorize]
+@inject ImportApiClient Api
+@inject JwtAuthenticationStateProvider Session
+@inject NavigationManager Navigation
+@inject UserDisplayState UserState
+
+<PageTitle>Import részletei</PageTitle>
+
+<PageHeader Title="Import részletei" Subtitle="@(_batch?.FileName ?? "Az import eredménye és hibái")">
+    <Actions>
+        <a class="btn btn-outline-secondary" href="imports"><i class="bi bi-arrow-left" aria-hidden="true"></i> Importok</a>
+    </Actions>
+</PageHeader>
+
+@if (_notFound)
+{
+    <div class="ft-card">
+        <EmptyState Icon="bi-question-circle" Title="Az import nem található" Text="Lehet, hogy nem létezik, vagy nem a te importod.">
+            <a class="btn btn-primary" href="imports">Vissza az importokhoz</a>
+        </EmptyState>
+    </div>
+}
+else if (_error is not null)
+{
+    <StatusMessage Kind="danger">@_error</StatusMessage>
+}
+else if (_batch is null)
+{
+    <div class="ft-card"><LoadingState /></div>
+}
+else
+{
+    <StatusMessage Kind="@ImportDisplay.StatusKind(_batch.Status)">
+        <strong>@ImportDisplay.ResultTitle(_batch.Status)</strong>
+        <span> @_batch.CreatedAt.ToLocalTime().ToString("yyyy. MM. dd. HH:mm", TransactionFormat.Hu)@(_batch.CompletedAt is { } done ? $" – {done.ToLocalTime().ToString("HH:mm:ss", TransactionFormat.Hu)}" : null)</span>
+    </StatusMessage>
+
+    <div class="stat-grid stat-grid-4">
+        <div class="ft-card stat-card">
+            <span class="stat-icon indigo"><i class="bi bi-list-ol" aria-hidden="true"></i></span>
+            <div><div class="stat-label">Feldolgozott sor</div><div class="stat-value">@_batch.TotalRows.ToString("N0", TransactionFormat.Hu)</div></div>
+        </div>
+        <div class="ft-card stat-card">
+            <span class="stat-icon green"><i class="bi bi-check2-circle" aria-hidden="true"></i></span>
+            <div><div class="stat-label">Importálva</div><div class="stat-value">@_batch.SuccessfulRows.ToString("N0", TransactionFormat.Hu)</div></div>
+        </div>
+        <div class="ft-card stat-card">
+            <span class="stat-icon red"><i class="bi bi-x-octagon" aria-hidden="true"></i></span>
+            <div><div class="stat-label">Hibás sor</div><div class="stat-value">@_batch.FailedRows.ToString("N0", TransactionFormat.Hu)</div></div>
+        </div>
+        <div class="ft-card stat-card">
+            <span class="stat-icon amber"><i class="bi bi-files" aria-hidden="true"></i></span>
+            <div><div class="stat-label">Kihagyott duplikátum</div><div class="stat-value">@_batch.DuplicateRows.ToString("N0", TransactionFormat.Hu)</div></div>
+        </div>
+    </div>
+
+    <div class="ft-card">
+        <div class="ft-card-header">
+            <div>
+                <h2 class="ft-card-title">Hibák soronként</h2>
+                <div class="text-muted small">Az itt felsorolt sorok nem kerültek be a tranzakciók közé.</div>
+            </div>
+            <ImportStatusChip Status="_batch.Status" />
+        </div>
+
+        @if (_batch.ErrorCount == 0)
+        {
+            <EmptyState Icon="bi-check2-circle" Title="Nincs hiba" Text="Az import minden feldolgozott sora rendben volt." />
+        }
+        else if (_errors is not null)
+        {
+            <div class="table-responsive">
+                <table class="ft-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Sor</th>
+                            <th scope="col">Hiba</th>
+                            <th scope="col">Részletek</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var error in _errors.Items)
+                        {
+                            <tr>
+                                <td class="date-cell">@ImportDisplay.RowLabel(error.RowNumber)</td>
+                                <td><span class="chip chip-danger">@ImportDisplay.ErrorLabel(error.ErrorCode)</span></td>
+                                <td>@error.ErrorMessage</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="ft-card-footer">
+                <div class="text-muted">@_errors.TotalCount hiba · @_errors.Page. oldal / @_errors.TotalPages</div>
+                <div class="pager">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" disabled="@(!_errors.HasPrevious || _loadingErrors)" @onclick="PreviousPageAsync"><i class="bi bi-chevron-left" aria-hidden="true"></i> Előző</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" disabled="@(!_errors.HasNext || _loadingErrors)" @onclick="NextPageAsync">Következő <i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+                </div>
+            </div>
+        }
+        else
+        {
+            <LoadingState />
+        }
+    </div>
+}
+
+@code {
+    private const int ErrorPageSize = 25;
+
+    [Parameter] public Guid Id { get; set; }
+
+    private ImportBatchDto? _batch;
+    private PagedResult<ImportErrorDto>? _errors;
+    private string? _error;
+    private bool _notFound;
+    private bool _loadingErrors;
+    private int _page = 1;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _batch = null;
+        _errors = null;
+        _error = null;
+        _notFound = false;
+        _page = 1;
+
+        var batch = await Api.GetAsync(Id);
+        if (batch.IsUnauthorized)
+        {
+            await SignOutAsync();
+            return;
+        }
+
+        if (batch.Status == System.Net.HttpStatusCode.NotFound)
+        {
+            _notFound = true;
+            return;
+        }
+
+        if (!batch.IsSuccess)
+        {
+            _error = string.Join(" ", batch.Messages);
+            return;
+        }
+
+        _batch = batch.Value;
+        if (_batch!.ErrorCount > 0)
+        {
+            await LoadErrorsAsync();
+        }
+    }
+
+    private async Task LoadErrorsAsync()
+    {
+        _loadingErrors = true;
+        var result = await Api.GetErrorsAsync(Id, _page, ErrorPageSize);
+        _loadingErrors = false;
+
+        if (result.IsUnauthorized)
+        {
+            await SignOutAsync();
+            return;
+        }
+
+        if (result.IsSuccess)
+        {
+            _errors = result.Value;
+        }
+        else
+        {
+            _error = string.Join(" ", result.Messages);
+        }
+    }
+
+    private async Task PreviousPageAsync()
+    {
+        if (_page > 1)
+        {
+            _page--;
+            await LoadErrorsAsync();
+        }
+    }
+
+    private async Task NextPageAsync()
+    {
+        _page++;
+        await LoadErrorsAsync();
+    }
+
+    private async Task SignOutAsync()
+    {
+        UserState.Set(null);
+        await Session.SignOutAsync();
+        Navigation.NavigateTo("login");
+    }
+}

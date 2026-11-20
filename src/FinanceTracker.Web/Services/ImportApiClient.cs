@@ -1,4 +1,5 @@
 ﻿using System.Net.Http.Headers;
+using FinanceTracker.Application.Common.Pagination;
 using FinanceTracker.Application.Features.Imports;
 using FinanceTracker.Application.Features.Imports.PreviewImport;
 
@@ -43,6 +44,18 @@ public sealed class ImportApiClient(HttpClient http, JwtAuthenticationStateProvi
 
         return SendContentAsync<ImportResultDto>(HttpMethod.Post, "api/imports", form);
     }
+
+    /// <summary>UC-14: a korábbi importok lapozott listája.</summary>
+    public Task<ApiResult<PagedResult<ImportBatchDto>>> GetPageAsync(int page, int pageSize)
+        => SendAsync<PagedResult<ImportBatchDto>>(HttpMethod.Get, $"api/imports?page={page}&pageSize={pageSize}");
+
+    /// <summary>UC-14: egy import összesítője.</summary>
+    public Task<ApiResult<ImportBatchDto>> GetAsync(Guid id)
+        => SendAsync<ImportBatchDto>(HttpMethod.Get, $"api/imports/{id}");
+
+    /// <summary>UC-14: egy import soronkénti hibái.</summary>
+    public Task<ApiResult<PagedResult<ImportErrorDto>>> GetErrorsAsync(Guid id, int page, int pageSize)
+        => SendAsync<PagedResult<ImportErrorDto>>(HttpMethod.Get, $"api/imports/{id}/errors?page={page}&pageSize={pageSize}");
 
     private static ByteArrayContent FileContent(byte[] content)
     {

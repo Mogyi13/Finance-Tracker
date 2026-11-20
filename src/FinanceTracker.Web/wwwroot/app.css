@@ -1860,3 +1860,100 @@ a {
         grid-template-columns: 1fr;
     }
 }
+
+/* 14 · Importelőzmények és kategorizálási szabályok (UC-14, UC-16) */
+.chip-success {
+    background: var(--ft-income-soft);
+    color: #166534;
+}
+
+    .chip-success::before {
+        background: var(--ft-income);
+    }
+
+.chip-warning {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+    .chip-warning::before {
+        background: #f59e0b;
+    }
+
+.chip-info {
+    background: var(--ft-primary-soft);
+    color: #3730a3;
+}
+
+    .chip-info::before {
+        background: var(--ft-primary);
+    }
+
+.chip .bi-magic {
+    color: var(--ft-primary);
+    font-size: .8rem;
+}
+
+.file-link {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    color: var(--ft-text);
+    font-weight: 600;
+    text-decoration: none;
+    overflow-wrap: anywhere;
+}
+
+    .file-link:hover {
+        color: var(--ft-primary);
+    }
+
+.rule-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem 1.25rem;
+}
+
+    .rule-form-grid .rule-wide {
+        grid-column: 1 / -1;
+    }
+
+.priority-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: .6rem;
+}
+
+.priority-value {
+    min-width: 2.2rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.priority-buttons {
+    display: inline-flex;
+    gap: .15rem;
+}
+
+.rule-keyword {
+    padding: .15rem .45rem;
+    border-radius: 6px;
+    background: #f1f5f9;
+    color: var(--ft-text);
+    font-size: .86rem;
+    overflow-wrap: anywhere;
+}
+
+.rule-inactive td {
+    color: var(--ft-muted);
+}
+
+.rule-inactive .rule-keyword {
+    opacity: .7;
+}
+
+@media (max-width: 575.98px) {
+    .rule-form-grid {
+        grid-template-columns: 1fr;
+    }
+}

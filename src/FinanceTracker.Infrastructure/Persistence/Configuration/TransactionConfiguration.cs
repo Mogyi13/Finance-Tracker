@@ -29,10 +29,18 @@ public class TransactionConfiguration : IEntityTypeConfiguration<Transaction>
         builder.Property(t => t.CategorizationStatus).HasConversion<byte>().HasColumnType("tinyint").IsRequired();
         builder.Property(t => t.CreatedAt).IsRequired();
 
+        // UC-13: SHA-256 ujjlenyomat (64 hexa karakter); a régebbi tranzakcióknál NULL.
+        builder.Property(t => t.Fingerprint).HasMaxLength(64).IsFixedLength().IsUnicode(false);
+
         // Felhasználói tranzakciók listázása, kategóriánkénti elemzés, bevétel/kiadás szűrés.
         builder.HasIndex(t => new { t.UserId, t.TransactionDate });
         builder.HasIndex(t => new { t.UserId, t.CategoryId, t.TransactionDate });
         builder.HasIndex(t => new { t.UserId, t.Type, t.TransactionDate });
+
+        // Duplikációfelismerés (UC-13). Szűrt, de nem egyedi index: két valódi, azonos adatú tranzakció is létezhet
+        // (például egy napon kétszer vásárolt azonos jegy), ezért a duplikációt az import menet közben értékeli.
+        builder.HasIndex(t => new { t.UserId, t.Fingerprint })
+            .HasFilter("[Fingerprint] IS NOT NULL");
 
         // A felhasználói fiók törlése külön üzleti folyamat, ezért nincs kaszkádolt törlés.
         builder.HasOne<ApplicationUser>()

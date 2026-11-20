@@ -6,7 +6,7 @@ services:
     image: mcr.microsoft.com/mssql/server:2022-latest
     environment:
       ACCEPT_EULA: 'Y'
-      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?Állítsd be az MSSQL_SA_PASSWORD értékét az .env fájlban}
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
     ports:
       - '1434:1433'
     volumes:
