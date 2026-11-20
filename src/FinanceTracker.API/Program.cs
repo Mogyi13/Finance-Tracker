@@ -55,7 +55,10 @@ builder.Services
             NameClaimType = "name"
         };
     });
-builder.Services.AddAuthorization();
+
+// UC-20: a modellkezelő végpontok csak a konfigurációban felsorolt üzemeltetőknek érhetők el (alapértelmezésben senkinek).
+var modelAdministrators = builder.Configuration.GetSection(AuthorizationPolicies.ModelAdministratorEmailsKey).Get<string[]>() ?? [];
+builder.Services.AddAuthorization(options => options.AddModelAdministratorPolicy(modelAdministrators));
 
 var app = builder.Build();
 

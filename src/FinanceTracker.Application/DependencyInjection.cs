@@ -2,11 +2,16 @@
 using FinanceTracker.Application.Features.Authentication.Register;
 using FinanceTracker.Application.Features.Categories.CreateCategory;
 using FinanceTracker.Application.Features.Categorization;
+using FinanceTracker.Application.Features.Categorization.CorrectCategory;
 using FinanceTracker.Application.Features.Categorization.CreateRule;
 using FinanceTracker.Application.Features.Categorization.DeleteRule;
 using FinanceTracker.Application.Features.Categorization.GetRules;
+using FinanceTracker.Application.Features.Categorization.GetSuggestions;
+using FinanceTracker.Application.Features.Categorization.Ml;
+using FinanceTracker.Application.Features.Categorization.PredictCategory;
 using FinanceTracker.Application.Features.Categorization.SetRuleActive;
 using FinanceTracker.Application.Features.Categorization.SetRulePriority;
+using FinanceTracker.Application.Features.Categorization.Training;
 using FinanceTracker.Application.Features.Categorization.UpdateRule;
 using FinanceTracker.Application.Features.Categories.DeleteCategory;
 using FinanceTracker.Application.Features.Categories.GetCategories;
@@ -57,8 +62,25 @@ public static class DependencyInjection
         services.AddScoped<GetImportHandler>();
         services.AddScoped<GetImportErrorsHandler>();
 
-        // UC-15: szabályalapú kategorizálás; a későbbi ML-alapú javaslat ugyanennek az interfésznek a mögé kerül.
-        services.AddScoped<ITransactionCategorizer, RuleBasedTransactionCategorizer>();
+        // UC-15, UC-18, UC-19: az automatikus kategorizálás sorrendje: előbb a felhasználó szabályai, utána az ML-modell.
+        // Az MlSettings alapértelmezett értékeit az Infrastructure a konfigurációból felülírja.
+        services.TryAddSingleton<MlSettings>();
+        services.AddScoped<RuleBasedTransactionCategorizer>();
+        services.AddScoped<MlCategoryService>();
+        services.AddScoped<CategoryPredictionService>();
+        services.AddScoped<ITransactionCategorizer, CompositeTransactionCategorizer>();
+
+        // UC-17, UC-18, UC-19
+        services.AddScoped<CorrectCategoryHandler>();
+        services.AddScoped<PredictCategoryHandler>();
+        services.AddScoped<GetSuggestionsHandler>();
+
+        // UC-20: modell tanítása, kiértékelése, aktiválása
+        services.AddScoped<TrainModelHandler>();
+        services.AddScoped<GetModelVersionsHandler>();
+        services.AddScoped<GetModelVersionHandler>();
+        services.AddScoped<ActivateModelHandler>();
+        services.AddScoped<DeactivateModelHandler>();
 
         services.AddScoped<GetRulesHandler>();
         services.AddScoped<CreateRuleHandler>();

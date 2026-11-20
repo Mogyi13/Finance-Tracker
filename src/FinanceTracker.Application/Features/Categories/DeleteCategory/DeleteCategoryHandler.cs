@@ -29,7 +29,7 @@ public sealed class DeleteCategoryHandler(ICurrentUser currentUser, ICategoryRep
 
         if (await categories.IsInUseAsync(category.Id))
         {
-            return Error.Conflict("A kategória nem törölhető, mert tranzakciók vagy kategorizálási szabályok hivatkoznak rá.");
+            return Error.Conflict("A kategória nem törölhető, mert tranzakciók, kategorizálási szabályok vagy kategorizálási visszajelzések hivatkoznak rá.");
         }
 
         await categories.DeleteAsync(category);

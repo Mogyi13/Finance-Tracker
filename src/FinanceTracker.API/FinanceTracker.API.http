@@ -4,3 +4,22 @@ GET {{FinanceTracker.API_HostAddress}}/weatherforecast/
 Accept: application/json
 
 ###
+
+### UC-17..UC-20 (a {{token}} a /api/auth/login válaszából jön; a modellkezelő végpontokhoz üzemeltetői fiók kell)
+@token = <JWT>
+
+POST {{FinanceTracker.API_HostAddress}}/api/categorization/predict
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "type": "Expense", "description": "Lidl Budapest" }
+
+###
+
+POST {{FinanceTracker.API_HostAddress}}/api/categorization/models/train
+Authorization: Bearer {{token}}
+
+###
+
+GET {{FinanceTracker.API_HostAddress}}/api/categorization/models
+Authorization: Bearer {{token}}

@@ -19,6 +19,10 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
     public DbSet<CategorizationRule> CategorizationRules => Set<CategorizationRule>();
 
+    public DbSet<CategorizationFeedback> CategorizationFeedbacks => Set<CategorizationFeedback>();
+
+    public DbSet<MlModelVersion> MlModelVersions => Set<MlModelVersion>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);

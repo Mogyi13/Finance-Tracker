@@ -2,6 +2,7 @@
 @attribute [Authorize]
 @inject TransactionApiClient Api
 @inject CategoryApiClient CategoriesApi
+@inject CategorizationApiClient CategorizationApi
 @inject JwtAuthenticationStateProvider Session
 @inject NavigationManager Navigation
 @inject UserDisplayState UserState
@@ -21,6 +22,11 @@
 else if (Saved == "updated")
 {
     <StatusMessage Kind="success">A tranzakció módosítása sikeres.</StatusMessage>
+}
+
+@if (_notice is not null)
+{
+    <StatusMessage Kind="success">@_notice</StatusMessage>
 }
 
 @if (_error is not null)
@@ -189,11 +195,15 @@ else if (Saved == "updated")
                                 <td>
                                     @if (transaction.CategoryName is not null)
                                     {
-                                        <span class="chip" title="@(transaction.CategorizationStatus == CategorizationStatus.RuleBased ? "Szabály alapján kategorizálva" : null)">
+                                        <span class="chip" title="@StatusHint(transaction.CategorizationStatus)">
                                             @transaction.CategoryName
                                             @if (transaction.CategorizationStatus == CategorizationStatus.RuleBased)
                                             {
                                                 <i class="bi bi-magic" aria-hidden="true"></i>
+                                            }
+                                            else if (transaction.CategorizationStatus == CategorizationStatus.MachineLearning)
+                                            {
+                                                <i class="bi bi-stars" aria-hidden="true"></i>
                                             }
                                         </span>
                                     }
@@ -204,6 +214,7 @@ else if (Saved == "updated")
                                 </td>
                                 <td class="text-end amount @(income ? "amount-income" : "amount-expense")">@TransactionFormat.Amount(transaction)</td>
                                 <td class="col-actions">
+                                    <button type="button" class="icon-btn" title="Kategória javítása" aria-label="Kategória javítása" @onclick="() => AskCorrect(transaction)"><i class="bi bi-tags" aria-hidden="true"></i></button>
                                     <a class="icon-btn" title="Szerkesztés" aria-label="Szerkesztés" href="@($"transactions/{transaction.Id}/edit")"><i class="bi bi-pencil" aria-hidden="true"></i></a>
                                     <button type="button" class="icon-btn danger" title="Törlés" aria-label="Törlés" @onclick="() => AskDelete(transaction)"><i class="bi bi-trash3" aria-hidden="true"></i></button>
                                 </td>
@@ -237,6 +248,50 @@ else if (Saved == "updated")
         }
     }
 </div>
+
+@if (_correctTarget is not null)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="correctTitle">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body p-4">
+                    <span class="modal-icon"><i class="bi bi-tags" aria-hidden="true"></i></span>
+                    <h2 class="h5 mb-2" id="correctTitle">Kategória javítása</h2>
+                    <p class="text-muted">
+                        @(string.IsNullOrWhiteSpace(_correctTarget.Description) ? "Tranzakció" : _correctTarget.Description)
+                        – @TransactionFormat.Amount(_correctTarget)
+                    </p>
+
+                    @if (_correctError is not null)
+                    {
+                        <StatusMessage Kind="danger">@_correctError</StatusMessage>
+                    }
+
+                    <label class="form-label" for="correct-category">Kategória</label>
+                    <select id="correct-category" class="form-select" @bind="_correctChoice">
+                        <option value="">Válassz kategóriát…</option>
+                        @foreach (var category in _categories.Where(c => (byte)c.Type == (byte)_correctTarget.Type))
+                        {
+                            <option value="@category.Id">@category.Name</option>
+                        }
+                    </select>
+                    <div class="form-text">A kézi besorolás felülírja az automatikus javaslatot, és a modell későbbi értékeléséhez megmarad.</div>
+                </div>
+                <div class="modal-footer border-0 pt-0 px-4 pb-4">
+                    <button type="button" class="btn btn-outline-secondary" disabled="@_correcting" @onclick="CancelCorrect">Mégse</button>
+                    <button type="button" class="btn btn-primary" disabled="@(_correcting || string.IsNullOrEmpty(_correctChoice))" @onclick="ConfirmCorrectAsync">
+                        @if (_correcting)
+                        {
+                            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                        }
+                        Mentés
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 @if (_deleteTarget is not null)
 {
@@ -295,6 +350,13 @@ else if (Saved == "updated")
 
     private TransactionDto? _deleteTarget;
     private bool _deleting;
+
+    // UC-17: kézi kategóriajavítás
+    private TransactionDto? _correctTarget;
+    private string _correctChoice = string.Empty;
+    private bool _correcting;
+    private string? _correctError;
+    private string? _notice;
 
     protected override async Task OnInitializedAsync()
     {
@@ -410,6 +472,52 @@ else if (Saved == "updated")
             _page = 1;
             await LoadAsync();
         }
+    }
+
+    private static string? StatusHint(CategorizationStatus status) => status switch
+    {
+        CategorizationStatus.RuleBased => "Szabály alapján kategorizálva",
+        CategorizationStatus.MachineLearning => "Modell alapján kategorizálva",
+        CategorizationStatus.ManuallyAssigned => "Kézzel kategorizálva",
+        _ => null
+    };
+
+    private void AskCorrect(TransactionDto transaction)
+    {
+        _correctTarget = transaction;
+        _correctChoice = transaction.CategoryId?.ToString() ?? string.Empty;
+        _correctError = null;
+    }
+
+    private void CancelCorrect() => _correctTarget = null;
+
+    private async Task ConfirmCorrectAsync()
+    {
+        if (_correctTarget is null || !Guid.TryParse(_correctChoice, out var categoryId))
+        {
+            return;
+        }
+
+        _correcting = true;
+        _correctError = null;
+        var result = await CategorizationApi.SubmitFeedbackAsync(_correctTarget.Id, categoryId);
+        _correcting = false;
+
+        if (result.IsUnauthorized)
+        {
+            await SignOutAsync();
+            return;
+        }
+
+        if (!result.IsSuccess)
+        {
+            _correctError = string.Join(" ", result.Messages);
+            return;
+        }
+
+        _correctTarget = null;
+        _notice = $"A kategória mentve: {result.Value!.CategoryName}.";
+        await LoadAsync();
     }
 
     private void AskDelete(TransactionDto transaction) => _deleteTarget = transaction;

@@ -95,6 +95,16 @@ public sealed class Transaction
         CategorizationStatus = status;
     }
 
+    /// <summary>
+    /// UC-17: kézi kategóriajavítás (vagy javaslat megerősítése). A kézi döntés felülírja az automatikus
+    /// besorolást, ezért az állapot mindig <see cref="CategorizationStatus.ManuallyAssigned"/> lesz.
+    /// </summary>
+    public void CorrectCategory(Category category, DateTime updatedAtUtc)
+    {
+        AssignCategory(category, CategorizationStatus.ManuallyAssigned);
+        UpdatedAt = updatedAtUtc;
+    }
+
     public void ClearCategory()
     {
         CategoryId = null;

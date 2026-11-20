@@ -8,6 +8,9 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 // Hitelesítés: a JWT-t a Web szerver kezeli (ProtectedSessionStorage), a hívások szerver-szerver irányúak.
+builder.Services.AddAuthentication(CircuitAuthenticationHandler.Scheme)
+    .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, CircuitAuthenticationHandler>(
+        CircuitAuthenticationHandler.Scheme, _ => { });
 builder.Services.AddAuthorization();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<JwtAuthenticationStateProvider>();
@@ -22,6 +25,8 @@ builder.Services.AddHttpClient<TransactionApiClient>(client => client.BaseAddres
 builder.Services.AddHttpClient<CategoryApiClient>(client => client.BaseAddress = new Uri(apiBaseUrl));
 builder.Services.AddHttpClient<ImportApiClient>(client => client.BaseAddress = new Uri(apiBaseUrl));
 builder.Services.AddHttpClient<CategorizationRuleApiClient>(client => client.BaseAddress = new Uri(apiBaseUrl));
+builder.Services.AddHttpClient<CategorizationApiClient>(client => client.BaseAddress = new Uri(apiBaseUrl));
+builder.Services.AddHttpClient<ModelAdminApiClient>(client => client.BaseAddress = new Uri(apiBaseUrl));
 
 var app = builder.Build();
 
@@ -38,6 +43,9 @@ if (!string.Equals(Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAIN
 {
     app.UseHttpsRedirection();
 }
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.UseAntiforgery();
 

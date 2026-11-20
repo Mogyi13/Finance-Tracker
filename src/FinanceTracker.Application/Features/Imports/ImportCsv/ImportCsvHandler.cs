@@ -127,7 +127,7 @@ public sealed class ImportCsvHandler(
             var to = validRows.Max(r => r.Details.Date);
 
             var fingerprints = validRows
-                .Select(r => FinanceTracker.Application.Features.Transactions.TransactionFingerprint.Compute(
+                .Select(r => TransactionFingerprint.Compute(
                     r.Details.Date, r.Details.Type, r.Details.Amount, r.Details.Currency, r.Details.Description))
                 .ToList();
 

@@ -1957,3 +1957,53 @@ a {
         grid-template-columns: 1fr;
     }
 }
+
+/* 15 · Kategóriajavaslatok és kézi kategóriajavítás (UC-17, UC-19) */
+.chip .bi-stars {
+    color: var(--ft-primary);
+    font-size: .8rem;
+}
+
+.col-suggest {
+    width: 1%;
+    min-width: 260px;
+}
+
+.suggest-cell {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .4rem;
+}
+
+.suggest-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: .5rem;
+}
+
+    .suggest-actions .form-select {
+        width: auto;
+        min-width: 170px;
+    }
+
+@media (max-width: 767.98px) {
+    .col-suggest {
+        min-width: 0;
+    }
+
+    .suggest-actions {
+        justify-content: flex-start;
+    }
+}
+
+/* 16 · Modellkezelés (UC-20) */
+.row-selected td {
+    background: var(--ft-primary-soft);
+}
+
+.col-actions .btn + .btn {
+    margin-left: .35rem;
+}
