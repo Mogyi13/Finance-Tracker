@@ -23,6 +23,10 @@ public static class ResultExtensions
                 return controller.Problem(detail: error.Message, statusCode: StatusCodes.Status401Unauthorized, title: "Hitelesítési hiba");
             case ErrorKind.Locked:
                 return controller.Problem(detail: error.Message, statusCode: StatusCodes.Status423Locked, title: "A fiók zárolva van");
+            case ErrorKind.Forbidden:
+                return controller.Problem(detail: error.Message, statusCode: StatusCodes.Status403Forbidden, title: "A művelet nem engedélyezett");
+            case ErrorKind.Conflict:
+                return controller.Problem(detail: error.Message, statusCode: StatusCodes.Status409Conflict, title: "Ütközés");
             case ErrorKind.NotFound:
                 return controller.Problem(detail: error.Message, statusCode: StatusCodes.Status404NotFound, title: "Nem található");
             default:

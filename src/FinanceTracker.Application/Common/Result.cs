@@ -6,6 +6,8 @@ public enum ErrorKind
     Unauthorized,
     Locked,
     NotFound,
+    Forbidden,
+    Conflict,
     Failure
 }
 
@@ -20,6 +22,10 @@ public sealed record Error(ErrorKind Kind, string Message, IReadOnlyDictionary<s
     public static Error Locked(string message) => new(ErrorKind.Locked, message);
 
     public static Error NotFound(string message) => new(ErrorKind.NotFound, message);
+
+    public static Error Forbidden(string message) => new(ErrorKind.Forbidden, message);
+
+    public static Error Conflict(string message) => new(ErrorKind.Conflict, message);
 
     public static Error Failure(string message) => new(ErrorKind.Failure, message);
 }

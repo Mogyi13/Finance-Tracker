@@ -1,6 +1,7 @@
 ﻿using FinanceTracker.Application.Common.Pagination;
 using FinanceTracker.Application.Features.Transactions;
 using FinanceTracker.Application.Features.Transactions.GetTransactions;
+using FinanceTracker.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.Infrastructure.Persistence.Repositories;
@@ -33,10 +34,12 @@ public sealed class TransactionQueries(ApplicationDbContext db) : ITransactionQu
 
     public async Task<PagedResult<TransactionDto>> GetPageAsync(Guid userId, GetTransactionsQuery query)
     {
-        var totalCount = await db.Transactions.AsNoTracking().CountAsync(t => t.UserId == userId);
+        // A felhasználó szerinti szűrés mindig érvényesül; a UC-09 szűrők csak ezen belül szűkítenek.
+        var filtered = ApplyFilters(db.Transactions.AsNoTracking().Where(t => t.UserId == userId), query);
 
-        var joined = from t in db.Transactions.AsNoTracking()
-                     where t.UserId == userId
+        var totalCount = await filtered.CountAsync();
+
+        var joined = from t in filtered
                      join c in db.Categories on t.CategoryId equals (Guid?)c.Id into categories
                      from c in categories.DefaultIfEmpty()
                      select new { Transaction = t, CategoryName = c != null ? c.Name : null };
@@ -83,4 +86,54 @@ public sealed class TransactionQueries(ApplicationDbContext db) : ITransactionQu
 
         return new PagedResult<TransactionDto>(items, query.Page, query.PageSize, totalCount);
     }
+
+    /// <summary>UC-09: a megadott szűrők alkalmazása (mind ÉS kapcsolatban, a határértékek is beleértendők).</summary>
+    private static IQueryable<Transaction> ApplyFilters(IQueryable<Transaction> source, GetTransactionsQuery query)
+    {
+        if (query.DateFrom is { } dateFrom)
+        {
+            source = source.Where(t => t.TransactionDate >= dateFrom);
+        }
+
+        if (query.DateTo is { } dateTo)
+        {
+            source = source.Where(t => t.TransactionDate <= dateTo);
+        }
+
+        if (query.Type is { } type)
+        {
+            source = source.Where(t => t.Type == type);
+        }
+
+        if (query.CategoryId is { } categoryId)
+        {
+            source = source.Where(t => t.CategoryId == categoryId);
+        }
+
+        if (query.MinAmount is { } minAmount)
+        {
+            source = source.Where(t => t.Amount >= minAmount);
+        }
+
+        if (query.MaxAmount is { } maxAmount)
+        {
+            source = source.Where(t => t.Amount <= maxAmount);
+        }
+
+        if (query.NormalizedSearch is { } search)
+        {
+            var pattern = "%" + EscapeLike(search) + "%";
+            source = source.Where(t => EF.Functions.Like(t.Description!, pattern, "\\"));
+        }
+
+        return source;
+    }
+
+    /// <summary>A LIKE minta speciális karaktereinek (\, %, _, [) levédése, hogy a keresés szó szerinti legyen.</summary>
+    private static string EscapeLike(string value)
+        => value
+            .Replace("\\", "\\\\")
+            .Replace("%", "\\%")
+            .Replace("_", "\\_")
+            .Replace("[", "\\[");
 }

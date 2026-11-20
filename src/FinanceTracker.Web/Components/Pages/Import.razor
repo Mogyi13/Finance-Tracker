@@ -1,0 +1,500 @@
+﻿@page "/import"
+@attribute [Authorize]
+@using FinanceTracker.Domain.Common
+@using FinanceTracker.Domain.Enums
+@inject ImportApiClient Api
+@inject JwtAuthenticationStateProvider Session
+@inject NavigationManager Navigation
+@inject UserDisplayState UserState
+
+<PageTitle>CSV-import</PageTitle>
+
+<PageHeader Title="CSV-import" Subtitle="Tranzakciók felvétele fájlból: tölts fel egy CSV-t, erősítsd meg az oszlopokat, és kész." />
+
+<ol class="steps" aria-label="Az import lépései">
+    <li class="step @StepClass(1)"><span class="step-no">@(_step > 1 ? "✓" : "1")</span> Fájl</li>
+    <li class="step @StepClass(2)"><span class="step-no">@(_step > 2 ? "✓" : "2")</span> Oszlopok</li>
+    <li class="step @StepClass(3)"><span class="step-no">3</span> Eredmény</li>
+</ol>
+
+@if (_errors.Count > 0)
+{
+    <StatusMessage Kind="danger" Messages="_errors" />
+}
+
+@if (_step == 1)
+{
+    <div class="import-layout">
+        <div class="ft-card">
+            <div class="ft-card-body">
+                <label class="dropzone @(_busy ? "is-busy" : null)" for="csvFile">
+                    <span class="dropzone-icon"><i class="bi @(_busy ? "bi-hourglass-split" : "bi-cloud-arrow-up")" aria-hidden="true"></i></span>
+                    <span class="dropzone-title">@(_busy ? "Fájl feldolgozása…" : "Válaszd ki a CSV-fájlt")</span>
+                    <span class="dropzone-text">Kattints ide, vagy húzd ide a fájlt. Legfeljebb @(ImportLimits.MaxFileSizeBytes / (1024 * 1024)) MB és @ImportLimits.MaxDataRows sor.</span>
+                    <InputFile id="csvFile" class="dropzone-input" accept=".csv,text/csv" disabled="@_busy" OnChange="OnFileSelectedAsync" />
+                </label>
+            </div>
+        </div>
+
+        <div class="ft-card">
+            <div class="ft-card-header"><h2 class="ft-card-title">Támogatott formátum</h2></div>
+            <div class="ft-card-body import-help">
+                <ul>
+                    <li>Az első sor a <strong>fejléc</strong> (oszlopnevek), utána soronként egy tranzakció.</li>
+                    <li>Elválasztó: pontosvessző, vessző, tabulátor vagy függőleges vonal (automatikusan felismerjük). Kódolás: UTF-8 vagy Windows-1250.</li>
+                    <li><strong>Kötelező:</strong> dátum, összeg, leírás.</li>
+                    <li><strong>Opcionális:</strong> típus (bevétel/kiadás), pénznem, kategória neve.</li>
+                    <li>Dátum például: <code>2026-11-18</code>, <code>2026. 11. 18.</code>, <code>18.11.2026</code>.</li>
+                    <li>Összeg például: <code>12 345,60</code>, <code>-1500</code>, <code>1,234.50 Ft</code>. Típusoszlop nélkül a <strong>negatív</strong> összeg kiadás, a pozitív bevétel.</li>
+                    <li>A már felvett (azonos dátumú, összegű, típusú, pénznemű és leírású) tranzakciókat duplikátumként kihagyjuk.</li>
+                </ul>
+                <a class="btn btn-outline-primary btn-sm" href="samples/transactions-sample.csv" download>
+                    <i class="bi bi-download" aria-hidden="true"></i> Mintafájl letöltése
+                </a>
+            </div>
+        </div>
+    </div>
+}
+else if (_step == 2 && _preview is not null)
+{
+    <div class="ft-card mb-4">
+        <div class="ft-card-header">
+            <div>
+                <h2 class="ft-card-title"><i class="bi bi-file-earmark-spreadsheet me-1" aria-hidden="true"></i> @_preview.FileName</h2>
+                <div class="text-muted small">@_preview.TotalRows adatsor · @_preview.Headers.Count oszlop · elválasztó: @DelimiterName(_preview.Delimiter)</div>
+            </div>
+            <button type="button" class="btn btn-outline-secondary btn-sm" disabled="@_busy" @onclick="Reset">Másik fájl</button>
+        </div>
+
+        <div class="table-responsive">
+            <table class="ft-table preview-table">
+                <thead>
+                    <tr>
+                        @foreach (var header in _preview.Headers)
+                        {
+                            <th scope="col">@header</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in _preview.SampleRows)
+                    {
+                        <tr>
+                            @foreach (var cell in row)
+                            {
+                                <td>@cell</td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        @if (_preview.TotalRows > _preview.SampleRows.Count)
+        {
+            <div class="ft-card-footer text-muted small">Az első @_preview.SampleRows.Count sor látható.</div>
+        }
+    </div>
+
+    <div class="ft-card">
+        <div class="ft-card-header"><h2 class="ft-card-title">Oszlopok hozzárendelése</h2></div>
+        <div class="ft-card-body">
+            <div class="map-grid">
+                @MapSelect("map-date", "Dátum", true, _map.Date, v => _map.Date = v)
+                @MapSelect("map-amount", "Összeg", true, _map.Amount, v => _map.Amount = v)
+                @MapSelect("map-description", "Leírás", true, _map.Description, v => _map.Description = v)
+                @MapSelect("map-type", "Típus (bevétel / kiadás)", false, _map.Type, v => _map.Type = v)
+                @MapSelect("map-currency", "Pénznem", false, _map.Currency, v => _map.Currency = v)
+                @MapSelect("map-category", "Kategória", false, _map.Category, v => _map.Category = v)
+            </div>
+
+            <hr class="my-4" />
+
+            <div class="map-grid">
+                <div>
+                    <label class="form-label" for="default-currency">Alapértelmezett pénznem</label>
+                    <select id="default-currency" class="form-select" @bind="_defaultCurrency">
+                        @foreach (var currency in SupportedCurrencies.All)
+                        {
+                            <option value="@currency">@currency</option>
+                        }
+                    </select>
+                    <div class="form-text">Akkor használjuk, ha nincs pénznem oszlop, vagy a cella üres.</div>
+                </div>
+
+                <div>
+                    <label class="form-label" for="delimiter">Elválasztó karakter</label>
+                    <select id="delimiter" class="form-select" value="@_delimiter" @onchange="OnDelimiterChangedAsync" disabled="@_busy">
+                        @foreach (var option in Enum.GetValues<ImportDelimiter>())
+                        {
+                            <option value="@option">@DelimiterName(option)</option>
+                        }
+                    </select>
+                    <div class="form-text">Csak akkor módosítsd, ha az oszlopok rosszul váltak szét.</div>
+                </div>
+            </div>
+
+            <div class="form-check mt-4">
+                <input id="skip-duplicates" class="form-check-input" type="checkbox" @bind="_skipDuplicates" />
+                <label class="form-check-label" for="skip-duplicates">Duplikátumok kihagyása</label>
+                <div class="form-text">A már rögzített, azonos tranzakciók nem kerülnek be újra (például ugyanazon fájl ismételt feltöltésekor).</div>
+            </div>
+
+            @if (MappingProblem is { } problem)
+            {
+                <div class="mt-4"><StatusMessage Kind="warning">@problem</StatusMessage></div>
+            }
+            else if (string.IsNullOrEmpty(_map.Type))
+            {
+                <div class="form-text mt-3"><i class="bi bi-info-circle" aria-hidden="true"></i> Típusoszlop nélkül a negatív összeg kiadás, a pozitív bevétel.</div>
+            }
+        </div>
+
+        <div class="ft-card-footer justify-content-end">
+            <button type="button" class="btn btn-outline-secondary" disabled="@_busy" @onclick="Reset">Mégse</button>
+            <button type="button" class="btn btn-primary" disabled="@(_busy || MappingProblem is not null)" @onclick="ImportAsync">
+                @if (_busy)
+                {
+                    <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                }
+                else
+                {
+                    <i class="bi bi-upload" aria-hidden="true"></i>
+                }
+                Importálás
+            </button>
+        </div>
+    </div>
+}
+else if (_step == 3 && _result is not null)
+{
+    <StatusMessage Kind="@ResultKind(_result.Status)">
+        <strong>@ResultTitle(_result.Status)</strong>
+        <span> @_result.FileName</span>
+    </StatusMessage>
+
+    <div class="stat-grid stat-grid-4">
+        <div class="ft-card stat-card">
+            <span class="stat-icon indigo"><i class="bi bi-list-ol" aria-hidden="true"></i></span>
+            <div><div class="stat-label">Feldolgozott sor</div><div class="stat-value">@_result.TotalRows.ToString("N0", TransactionFormat.Hu)</div></div>
+        </div>
+        <div class="ft-card stat-card">
+            <span class="stat-icon green"><i class="bi bi-check2-circle" aria-hidden="true"></i></span>
+            <div><div class="stat-label">Importálva</div><div class="stat-value">@_result.SuccessfulRows.ToString("N0", TransactionFormat.Hu)</div></div>
+        </div>
+        <div class="ft-card stat-card">
+            <span class="stat-icon red"><i class="bi bi-x-octagon" aria-hidden="true"></i></span>
+            <div><div class="stat-label">Hibás sor</div><div class="stat-value">@_result.FailedRows.ToString("N0", TransactionFormat.Hu)</div></div>
+        </div>
+        <div class="ft-card stat-card">
+            <span class="stat-icon amber"><i class="bi bi-files" aria-hidden="true"></i></span>
+            <div><div class="stat-label">Kihagyott duplikátum</div><div class="stat-value">@_result.DuplicateRows.ToString("N0", TransactionFormat.Hu)</div></div>
+        </div>
+    </div>
+
+    @if (_result.DuplicateRowNumbers.Count > 0)
+    {
+        <div class="ft-card mb-4">
+            <div class="ft-card-body">
+                <strong>Kihagyott (már létező) sorok:</strong>
+                <span class="text-muted">
+                    @string.Join(", ", _result.DuplicateRowNumbers)@(_result.DuplicateRows > _result.DuplicateRowNumbers.Count ? " és további " + (_result.DuplicateRows - _result.DuplicateRowNumbers.Count) : null)
+                </span>
+            </div>
+        </div>
+    }
+
+    @if (_result.ErrorCount > 0)
+    {
+        <div class="ft-card mb-4">
+            <div class="ft-card-header">
+                <h2 class="ft-card-title">Hibák</h2>
+                <span class="text-muted small">@_result.ErrorCount hiba</span>
+            </div>
+            <div class="table-responsive">
+                <table class="ft-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Sor</th>
+                            <th scope="col">Hiba</th>
+                            <th scope="col">Részletek</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var error in _result.Errors)
+                        {
+                            <tr>
+                                <td class="date-cell">@(error.RowNumber == 0 ? "Fájl" : error.RowNumber.ToString())</td>
+                                <td><span class="chip chip-danger">@ErrorLabel(error.ErrorCode)</span></td>
+                                <td>@error.ErrorMessage</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            @if (_result.ErrorCount > _result.Errors.Count)
+            {
+                <div class="ft-card-footer text-muted small">Az első @_result.Errors.Count hiba látható (összesen @_result.ErrorCount).</div>
+            }
+        </div>
+    }
+
+    <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-primary" href="transactions"><i class="bi bi-receipt" aria-hidden="true"></i> Tranzakciók megtekintése</a>
+        <button type="button" class="btn btn-outline-secondary" @onclick="Reset"><i class="bi bi-arrow-repeat" aria-hidden="true"></i> Új import</button>
+    </div>
+}
+
+@code {
+    private sealed class MappingModel
+    {
+        public string Date { get; set; } = string.Empty;
+        public string Amount { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public string Type { get; set; } = string.Empty;
+        public string Currency { get; set; } = string.Empty;
+        public string Category { get; set; } = string.Empty;
+    }
+
+    private int _step = 1;
+    private string? _fileName;
+    private byte[]? _bytes;
+    private ImportPreviewDto? _preview;
+    private ImportResultDto? _result;
+    private MappingModel _map = new();
+    private ImportDelimiter _delimiter = ImportDelimiter.Auto;
+    private string _defaultCurrency = "HUF";
+    private bool _skipDuplicates = true;
+    private bool _busy;
+    private List<string> _errors = new();
+
+    private string StepClass(int step) => step == _step ? "is-current" : step < _step ? "is-done" : string.Empty;
+
+    private RenderFragment MapSelect(string id, string label, bool required, string value, Action<string> set) => builder =>
+    {
+        var seq = 0;
+        builder.OpenElement(seq++, "div");
+        builder.OpenElement(seq++, "label");
+        builder.AddAttribute(seq++, "class", "form-label");
+        builder.AddAttribute(seq++, "for", id);
+        builder.AddContent(seq++, required ? label + " *" : label);
+        builder.CloseElement();
+        builder.OpenElement(seq++, "select");
+        builder.AddAttribute(seq++, "id", id);
+        builder.AddAttribute(seq++, "class", "form-select");
+        builder.AddAttribute(seq++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, e => set(e.Value?.ToString() ?? string.Empty)));
+        builder.OpenElement(seq++, "option");
+        builder.AddAttribute(seq++, "value", string.Empty);
+        builder.AddAttribute(seq++, "selected", string.IsNullOrEmpty(value));
+        builder.AddContent(seq++, required ? "Válassz oszlopot…" : "— nincs —");
+        builder.CloseElement();
+        foreach (var header in _preview!.Headers)
+        {
+            builder.OpenElement(seq++, "option");
+            builder.SetKey(header);
+            builder.AddAttribute(seq++, "value", header);
+            builder.AddAttribute(seq++, "selected", string.Equals(header, value, StringComparison.Ordinal));
+            builder.AddContent(seq++, header);
+            builder.CloseElement();
+        }
+
+        builder.CloseElement();
+        builder.CloseElement();
+    };
+
+    /// <summary>A kötelező oszlopok kiválasztását és az ismétlődő hozzárendelést ellenőrzi; null, ha rendben van.</summary>
+    private string? MappingProblem
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(_map.Date) || string.IsNullOrEmpty(_map.Amount) || string.IsNullOrEmpty(_map.Description))
+            {
+                return "A dátum, az összeg és a leírás oszlopának kiválasztása kötelező.";
+            }
+
+            var chosen = new[] { _map.Date, _map.Amount, _map.Description, _map.Type, _map.Currency, _map.Category }
+                .Where(c => !string.IsNullOrEmpty(c))
+                .ToList();
+
+            return chosen.Count != chosen.Distinct(StringComparer.OrdinalIgnoreCase).Count()
+                ? "Ugyanazt az oszlopot nem rendelheted több mezőhöz."
+                : null;
+        }
+    }
+
+    private async Task OnFileSelectedAsync(InputFileChangeEventArgs e)
+    {
+        _errors = new List<string>();
+        var file = e.File;
+
+        if (!file.Name.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
+        {
+            _errors = new List<string> { "Csak .csv kiterjesztésű fájl importálható." };
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            await using var input = file.OpenReadStream(ImportLimits.MaxFileSizeBytes);
+            using var buffer = new MemoryStream();
+            await input.CopyToAsync(buffer);
+
+            _fileName = file.Name;
+            _bytes = buffer.ToArray();
+            _delimiter = ImportDelimiter.Auto;
+            await LoadPreviewAsync();
+        }
+        catch (IOException)
+        {
+            _errors = new List<string> { $"A fájl túl nagy, legfeljebb {ImportLimits.MaxFileSizeBytes / (1024 * 1024)} MB méretű fájl tölthető fel." };
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task LoadPreviewAsync()
+    {
+        var result = await Api.PreviewAsync(_fileName!, _bytes!, _delimiter);
+        if (result.IsUnauthorized)
+        {
+            await SignOutAsync();
+            return;
+        }
+
+        if (!result.IsSuccess)
+        {
+            _errors = result.Messages.ToList();
+            return;
+        }
+
+        _preview = result.Value;
+
+        // Az első betöltéskor a javasolt hozzárendelést vesszük át; elválasztóváltáskor a már választottat megtartjuk, ha még érvényes.
+        var suggestion = _preview!.SuggestedMapping;
+        _map = new MappingModel
+        {
+            Date = KeepOrSuggest(_map.Date, suggestion.DateColumn),
+            Amount = KeepOrSuggest(_map.Amount, suggestion.AmountColumn),
+            Description = KeepOrSuggest(_map.Description, suggestion.DescriptionColumn),
+            Type = KeepOrSuggest(_map.Type, suggestion.TypeColumn),
+            Currency = KeepOrSuggest(_map.Currency, suggestion.CurrencyColumn),
+            Category = KeepOrSuggest(_map.Category, suggestion.CategoryColumn)
+        };
+        _step = 2;
+    }
+
+    private string KeepOrSuggest(string current, string? suggested)
+        => !string.IsNullOrEmpty(current) && _preview!.Headers.Contains(current) ? current : suggested ?? string.Empty;
+
+    private async Task OnDelimiterChangedAsync(ChangeEventArgs e)
+    {
+        if (Enum.TryParse<ImportDelimiter>(e.Value?.ToString(), out var delimiter) && _bytes is not null)
+        {
+            _delimiter = delimiter;
+            _errors = new List<string>();
+            _busy = true;
+            try
+            {
+                await LoadPreviewAsync();
+            }
+            finally
+            {
+                _busy = false;
+            }
+        }
+    }
+
+    private async Task ImportAsync()
+    {
+        if (MappingProblem is not null || _bytes is null || _fileName is null)
+        {
+            return;
+        }
+
+        _busy = true;
+        _errors = new List<string>();
+
+        var mapping = new CsvColumnMapping(
+            _map.Date, _map.Amount, _map.Description,
+            NullIfEmpty(_map.Type), NullIfEmpty(_map.Currency), NullIfEmpty(_map.Category));
+
+        var result = await Api.ImportAsync(_fileName, _bytes, mapping, _delimiter, _defaultCurrency, _skipDuplicates);
+        _busy = false;
+
+        if (result.IsUnauthorized)
+        {
+            await SignOutAsync();
+            return;
+        }
+
+        if (!result.IsSuccess)
+        {
+            _errors = result.Messages.ToList();
+            return;
+        }
+
+        _result = result.Value;
+        _step = 3;
+    }
+
+    private static string? NullIfEmpty(string value) => string.IsNullOrEmpty(value) ? null : value;
+
+    private void Reset()
+    {
+        _step = 1;
+        _fileName = null;
+        _bytes = null;
+        _preview = null;
+        _result = null;
+        _map = new MappingModel();
+        _delimiter = ImportDelimiter.Auto;
+        _errors = new List<string>();
+    }
+
+    private static string DelimiterName(ImportDelimiter delimiter) => delimiter switch
+    {
+        ImportDelimiter.Comma => "vessző (,)",
+        ImportDelimiter.Semicolon => "pontosvessző (;)",
+        ImportDelimiter.Tab => "tabulátor",
+        ImportDelimiter.Pipe => "függőleges vonal (|)",
+        _ => "automatikus"
+    };
+
+    private static string ResultKind(ImportBatchStatus status) => status switch
+    {
+        ImportBatchStatus.Completed => "success",
+        ImportBatchStatus.PartiallyCompleted => "warning",
+        _ => "danger"
+    };
+
+    private static string ResultTitle(ImportBatchStatus status) => status switch
+    {
+        ImportBatchStatus.Completed => "Az import sikeresen lefutott.",
+        ImportBatchStatus.PartiallyCompleted => "Az import részben sikerült: a hibás sorok kimaradtak.",
+        ImportBatchStatus.Failed => "Az import sikertelen.",
+        _ => "Az import folyamatban van."
+    };
+
+    private static string ErrorLabel(string code) => code switch
+    {
+        ImportErrorCodes.InvalidFile => "Fájl szerkezete",
+        ImportErrorCodes.InvalidRow => "Oszlopszám",
+        ImportErrorCodes.InvalidDate => "Dátum",
+        ImportErrorCodes.InvalidAmount => "Összeg",
+        ImportErrorCodes.MissingDescription => "Leírás hiányzik",
+        ImportErrorCodes.InvalidDescription => "Leírás",
+        ImportErrorCodes.InvalidCurrency => "Pénznem",
+        ImportErrorCodes.InvalidType => "Típus",
+        ImportErrorCodes.InvalidCategory => "Kategória",
+        _ => code
+    };
+
+    private async Task SignOutAsync()
+    {
+        UserState.Set(null);
+        await Session.SignOutAsync();
+        Navigation.NavigateTo("login");
+    }
+}

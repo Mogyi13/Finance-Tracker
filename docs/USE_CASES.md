@@ -1,676 +1,668 @@
-# Smart Finance – Use Cases
+# Finance Tracker – Use-Case -specifikáció
 
-## 1. Purpose
+## 1. A dokumentum célja
 
-This document describes the actors, use cases, business workflows, and expected system behavior of the Smart Finance application.
+Ez a dokumentum bemutatja a Finance Tracker alkalmazás szereplőit, használati eseteit, üzleti folyamatait és a rendszertől elvárt működést.
 
-The purpose of the application is to help users record, categorize, analyze, and forecast their personal income and expenses.
+Az alkalmazás célja, hogy segítse a felhasználókat személyes bevételeik és kiadásaik rögzítésében, kategorizálásában, elemzésében és előrejelzésében.
 
-The system supports both rule-based and machine-learning-based transaction categorization, statistical anomaly detection, recurring expense identification, budget management, and financial forecasting.
+A rendszer támogatja:
+- A szabályalapú és gépi tanuláson alapuló tranzakciókategorizálást.
+- A statisztikai anomáliadetektálást.
+- Az ismétlődő kiadások felismerését.
+- A költségkeretek kezelését.
+- A pénzügyi előrejelzések készítését.
 
-## 2. Actors
+## 2. Szereplők
 
-### 2.1. Registered User
+### 2.1. Regisztrált felhasználó
 
-The primary actor of the system.
+A rendszer elsődleges szereplője.
 
-A registered user can:
+A regisztrált felhasználó az alábbi műveleteket végezheti:
+- Saját profiljának kezelése.
+- Tranzakciók létrehozása, megtekintése, módosítása és törlése.
+- Személyes kategóriák kezelése.
+- Tranzakciók importálása CSV-fájlokból.
+- Tranzakciókategorizálási szabályok beállítása.
+- Automatikusan hozzárendelt kategóriák javítása.
+- Pénzügyi statisztikák és trendek megtekintése.
+- Költségkeretek létrehozása és nyomon követése.
+- Felismert anomáliák és ismétlődő kiadások áttekintése.
+- Pénzügyi előrejelzések megtekintése.
 
-- Manage their profile.
-- Create, view, update, and delete transactions.
-- Manage personal categories.
-- Import transactions from CSV files.
-- Configure transaction categorization rules.
-- Correct automatically assigned categories.
-- View financial statistics and trends.
-- Create and monitor budgets.
-- Review detected anomalies and recurring expenses.
-- View financial forecasts.
+### 2.2. Rendszergazda
 
-### 2.2. Administrator
+A rendszergazda az alkalmazás szintű karbantartásért felelős.
 
-The administrator is responsible for application-level maintenance.
+Feladatai többek között:
+- Rendszerszintű konfigurációk kezelése.
+- Alapértelmezett kategóriák kezelése.
+- Alkalmazásnaplók áttekintése.
+- Gépi tanulási modellek kezelése és aktiválása.
+- Háttérfolyamatok felügyelete.
 
-Administrator responsibilities may include:
+A rendszergazda nem kaphat automatikusan hozzáférést a felhasználók bizalmas pénzügyi adataihoz.
 
-- Managing system-level configuration.
-- Managing default categories.
-- Reviewing application logs.
-- Managing and activating machine learning models.
-- Monitoring background processing.
+### 2.3. Háttérfeldolgozó szolgáltatás
 
-An administrator must not automatically receive access to users' private financial information.
+Belső rendszerszereplő, amely azokat a műveleteket végzi, amelyek nem akadályozhatják a felhasználói kérések kiszolgálását.
 
-### 2.3. Background Processing Service
+Feladatai:
+- Nagyobb CSV-importok feldolgozása.
+- Ütemezett anomáliadetektálás futtatása.
+- Ismétlődő tranzakciók felismerése.
+- Előrejelzések létrehozása vagy frissítése szükség esetén.
+- Gépi tanulási modellek tanításához szükséges adathalmazok előkészítése.
 
-An internal system actor responsible for operations that should not block user requests.
+## 3. Használatieset-áttekintés
 
-Responsibilities:
-
-- Processing larger CSV imports.
-- Running scheduled anomaly detection.
-- Detecting recurring transactions.
-- Generating or refreshing forecasts when necessary.
-- Preparing machine learning training datasets.
-
-## 3. Use Case Overview
-
-| ID | Use Case | Primary Actor |
+| Azonosító | Használati eset | Elsődleges szereplő |
 |---|---|---|
-| UC-01 | Register account | User |
-| UC-02 | Log in | User |
-| UC-03 | Log out | User |
-| UC-04 | Manage profile | User |
-| UC-05 | Create transaction | User |
-| UC-06 | View transactions | User |
-| UC-07 | Update transaction | User |
-| UC-08 | Delete transaction | User |
-| UC-09 | Filter transactions | User |
-| UC-10 | Manage categories | User |
-| UC-11 | Import CSV file | User |
-| UC-12 | Validate imported transactions | System |
-| UC-13 | Detect duplicate transactions | System |
-| UC-14 | View import results | User |
-| UC-15 | Categorize transaction using rules | System |
-| UC-16 | Manage categorization rules | User |
-| UC-17 | Correct transaction category | User |
-| UC-18 | Categorize transaction using ML.NET | System |
-| UC-19 | Evaluate categorization confidence | System |
-| UC-20 | Train and evaluate ML model | Administrator |
-| UC-21 | View financial overview | User |
-| UC-22 | Analyze expenses by category | User |
-| UC-23 | Compare financial periods | User |
-| UC-24 | Detect recurring expenses | System |
-| UC-25 | Detect financial anomalies | System |
-| UC-26 | Manage budgets | User |
-| UC-27 | Monitor budget usage | User |
-| UC-28 | Generate expense forecasts | System |
-| UC-29 | Compare forecasting methods | Administrator |
-| UC-30 | View financial forecasts | User |
-| UC-31 | View dashboard | User |
-
-## 4. Detailed Use Cases
-
-### UC-01 – Register Account
-
-**Actor:** User
-
-**Preconditions:**
-- The user is not authenticated.
-- The user does not already have an account with the submitted email address.
-
-**Main Flow:**
-1. The user opens the registration page.
-2. The user enters their email address, display name, and password.
-3. The frontend validates the input.
-4. The backend validates the submitted data.
-5. The system checks whether the email address is already registered.
-6. ASP.NET Core Identity creates the user account.
-7. The system initializes the user's seed categories.
-8. The system confirms successful registration.
-
-**Alternative Flows:**
-- If the email address is already registered, the system returns a validation error.
-- If the password does not meet the security requirements, registration is rejected.
-- If category initialization fails, the system must avoid leaving the account in an inconsistent state.
-
-**Postconditions:**
-- A new user account exists.
-- The user has access to their default categories.
-
-### UC-02 – Log In
-
-**Actor:** User
-
-**Preconditions:**
-- The user has an existing account.
-
-**Main Flow:**
-1. The user enters their email address and password.
-2. The backend validates the credentials.
-3. ASP.NET Core Identity verifies the password.
-4. The system generates an authentication token.
-5. The frontend stores the authentication state.
-6. The user is redirected to the dashboard.
-
-**Alternative Flows:**
-- Invalid credentials result in an authentication error.
-- Disabled or locked accounts cannot authenticate.
-
-**Postconditions:**
-- The user is authenticated.
-- Protected application functionality becomes accessible.
-
-### UC-03 – Log Out
-
-**Actor:** User
-
-**Main Flow:**
-1. The user selects the logout option.
-2. The frontend clears the local authentication state and token.
-3. The user is redirected to the login page. kijelentkezés a Web szerver oldali állapotának és a tárolt tokennek a törlése
-
-**Postconditions:**
-- The current frontend session is no longer authenticated.
-
-### UC-04 – Manage Profile
-
-**Actor:** User
-
-**Main Flow:**
-1. The user opens their profile.
-2. The system loads the current profile information.
-3. The user changes the display name or other editable profile fields.
-4. The backend validates the changes.
-5. The system saves the updated information.
+| UC-01 | Felhasználói fiók regisztrálása | Felhasználó |
+| UC-02 | Bejelentkezés | Felhasználó |
+| UC-03 | Kijelentkezés | Felhasználó |
+| UC-04 | Profil kezelése | Felhasználó |
+| UC-05 | Tranzakció létrehozása | Felhasználó |
+| UC-06 | Tranzakciók megtekintése | Felhasználó |
+| UC-07 | Tranzakció módosítása | Felhasználó |
+| UC-08 | Tranzakció törlése | Felhasználó |
+| UC-09 | Tranzakciók szűrése | Felhasználó |
+| UC-10 | Kategóriák kezelése | Felhasználó |
+| UC-11 | CSV-fájl importálása | Felhasználó |
+| UC-12 | Importált tranzakciók ellenőrzése | Rendszer |
+| UC-13 | Duplikált tranzakciók felismerése | Rendszer |
+| UC-14 | Importálási eredmények megtekintése | Felhasználó |
+| UC-15 | Tranzakció kategorizálása szabályok alapján | Rendszer |
+| UC-16 | Kategorizálási szabályok kezelése | Felhasználó |
+| UC-17 | Tranzakció kategóriájának javítása | Felhasználó |
+| UC-18 | Tranzakció kategorizálása ML.NET segítségével | Rendszer |
+| UC-19 | Kategorizálási megbízhatóság értékelése | Rendszer |
+| UC-20 | Gépi tanulási modell tanítása és értékelése | Rendszergazda |
+| UC-21 | Pénzügyi áttekintés megtekintése | Felhasználó |
+| UC-22 | Kiadások elemzése kategóriánként | Felhasználó |
+| UC-23 | Pénzügyi időszakok összehasonlítása | Felhasználó |
+| UC-24 | Ismétlődő kiadások felismerése | Rendszer |
+| UC-25 | Pénzügyi anomáliák felismerése | Rendszer |
+| UC-26 | Költségkeretek kezelése | Felhasználó |
+| UC-27 | Költségkeretek felhasználásának nyomon követése | Felhasználó |
+| UC-28 | Kiadási előrejelzések készítése | Rendszer |
+| UC-29 | Előrejelzési módszerek összehasonlítása | Rendszergazda |
+| UC-30 | Pénzügyi előrejelzések megtekintése | Felhasználó |
+| UC-31 | Vezérlőpult megtekintése | Felhasználó |
+
+## 4. Részletes használati esetek
+
+### UC-01 – Felhasználói fiók regisztrálása
+
+**Szereplő:** Felhasználó
+
+**Előfeltételek:**
+- A felhasználó nincs hitelesítve.
+- A megadott e-mail-címmel még nem létezik felhasználói fiók.
+
+**Alapfolyamat:**
+1. A felhasználó megnyitja a regisztrációs oldalt.
+2. Megadja az e-mail-címét, a megjelenített nevét és a jelszavát.
+3. A frontend ellenőrzi a megadott adatokat.
+4. A backend ellenőrzi a beküldött adatokat.
+5. A rendszer ellenőrzi, hogy az e-mail-cím már regisztrálva van-e.
+6. Az ASP.NET Core Identity létrehozza a felhasználói fiókot.
+7. A rendszer inicializálja a felhasználó alapértelmezett kategóriáit.
+8. A rendszer visszajelzést ad a sikeres regisztrációról.
+
+**Alternatív folyamatok:**
+- Ha az e-mail-cím már regisztrálva van, a rendszer validációs hibát jelez.
+- Ha a jelszó nem felel meg a biztonsági követelményeknek, a regisztráció sikertelen.
+- Ha a kategóriák inicializálása sikertelen, a rendszernek el kell kerülnie a felhasználói fiók inkonzisztens állapotban történő létrehozását.
+
+**Utófeltételek:**
+- Az új felhasználói fiók létrejött.
+- A felhasználó hozzáfér az alapértelmezett kategóriáihoz.
+
+### UC-02 – Bejelentkezés
+
+**Szereplő:** Felhasználó
+
+**Előfeltételek:**
+- A felhasználó már rendelkezik regisztrált fiókkal.
+
+**Alapfolyamat:**
+1. A felhasználó megadja az e-mail-címét és a jelszavát.
+2. A backend ellenőrzi a hitelesítési adatokat.
+3. Az ASP.NET Core Identity ellenőrzi a jelszót.
+4. A rendszer létrehozza a hitelesítéshez szükséges tokent.
+5. A frontend beállítja a hitelesítési állapotot.
+6. A rendszer átirányítja a felhasználót a vezérlőpultra.
+
+**Alternatív folyamatok:**
+- Hibás hitelesítési adatok esetén a rendszer hitelesítési hibát jelez.
+- Letiltott vagy zárolt felhasználói fiókkal nem lehet bejelentkezni.
+
+**Utófeltételek:**
+- A felhasználó hitelesített állapotba kerül.
+- Elérhetővé válnak a hitelesítéshez kötött alkalmazásfunkciók.
+
+### UC-03 – Kijelentkezés
+
+**Szereplő:** Felhasználó
+
+**Alapfolyamat:**
+1. A felhasználó kiválasztja a kijelentkezés lehetőségét.
+2. A rendszer törli a Web szerveroldali hitelesítési állapotát és a tárolt tokent.
+3. A felhasználó átirányításra kerül a bejelentkezési oldalra.
+
+**Utófeltételek:**
+- Az aktuális felhasználói munkamenet már nem hitelesített.
+
+### UC-04 – Profil kezelése
+
+**Szereplő:** Felhasználó
+
+**Alapfolyamat:**
+1. A felhasználó megnyitja a profilját.
+2. A rendszer betölti az aktuális profiladatokat.
+3. A felhasználó módosítja a megjelenített nevét vagy más szerkeszthető profiladatait.
+4. A backend ellenőrzi a módosításokat.
+5. A rendszer elmenti a frissített adatokat.
+
+**Alternatív folyamatok:**
+- Érvénytelen adatok esetén a rendszer elutasítja a módosítást.
+- Az e-mail-cím módosítása – amennyiben támogatott – a megfelelő Identity-ellenőrzési folyamatot igényli.
+
+### UC-05 – Tranzakció létrehozása
+
+**Szereplő:** Felhasználó
+
+**Előfeltételek:**
+- A felhasználó hitelesített állapotban van.
 
-**Alternative Flows:**
-- Invalid data is rejected.
-- Email changes, if supported, require the appropriate Identity verification process.
+**Alapfolyamat:**
+1. A felhasználó megnyitja a tranzakciós űrlapot.
+2. Kiválasztja, hogy bevételt vagy kiadást szeretne rögzíteni.
+3. Megadja az összeget, a pénznemet, a leírást és a tranzakció dátumát.
+4. Opcionálisan kiválaszt egy kategóriát.
+5. A backend ellenőrzi a beküldött adatokat.
+6. A rendszer ellenőrzi, hogy a kiválasztott kategória a felhasználóhoz tartozik-e, vagy rendszerszintű kategória.
+7. Ha az automatikus kategorizálás engedélyezett, és a felhasználó nem választott ki kifejezetten kategóriát, lefut a kategorizálási folyamat.
+8. A rendszer elmenti a tranzakciót.
+9. A frontend megjeleníti a frissített tranzakciót.
+
+**Alternatív folyamatok:**
+- Az érvénytelen vagy nem pozitív összegeket a rendszer elutasítja.
+- A tranzakció típusával nem összeegyeztethető kategória nem rendelhető hozzá.
+- Másik felhasználóhoz tartozó kategória nem rendelhető hozzá.
+- Ha az automatikus kategorizálás nem tud kategóriát meghatározni, a tranzakció kategorizálatlan marad, vagy manuális ellenőrzést igényel.
+
+**Utófeltételek:**
+- A tranzakció elmentésre kerül, és a hitelesített felhasználóhoz kapcsolódik.
+
+### UC-06 – Tranzakciók megtekintése
+
+**Szereplő:** Felhasználó
+
+**Alapfolyamat:**
+1. A felhasználó megnyitja a tranzakciók listáját.
+2. A backend lekéri a hitelesített felhasználóhoz tartozó tranzakciókat.
+3. A rendszer lapozható eredményeket ad vissza.
+4. A frontend megjeleníti a tranzakciókat.
+
+**Üzleti szabályok:**
+- A felhasználók kizárólag a saját tranzakcióikat tekinthetik meg.
+- Az eredményeket lapozható formában kell megjeleníteni.
+- A tranzakciók dátum és összeg szerint rendezhetők legyenek.
+
+### UC-07 – Tranzakció módosítása
+
+**Szereplő:** Felhasználó
+
+**Alapfolyamat:**
+1. A felhasználó kiválaszt egy tranzakciót.
+2. A rendszer ellenőrzi a tranzakció tulajdonosát.
+3. A felhasználó módosítja a tranzakció adatait.
+4. A backend ellenőrzi a módosításokat.
+5. A rendszer elmenti a frissített tranzakciót.
+6. A kapcsolódó elemzések és származtatott eredmények szükség esetén újraszámításra vagy frissítésre lesznek megjelölve.
 
-### UC-05 – Create Transaction
+**Alternatív folyamatok:**
+- Másik felhasználóhoz tartozó tranzakció nem érhető el.
+- Az érvénytelen kategória-hozzárendeléseket a rendszer elutasítja.
+
+### UC-08 – Tranzakció törlése
+
+**Szereplő:** Felhasználó
+
+**Alapfolyamat:**
+1. A felhasználó kiválaszt egy törlendő tranzakciót.
+2. A rendszer ellenőrzi a tranzakció tulajdonosát.
+3. A felhasználó megerősíti a törlést.
+4. A backend törli a tranzakciót.
+5. A kapcsolódó származtatott információk újraszámításra vagy érvénytelenítésre kerülnek.
+
+**Üzleti szabályok:**
+- A felhasználó nem törölheti más felhasználó tranzakcióját.
+- A kapcsolódó rekordoknak az adatbázisban beállított idegenkulcs-törlési szabályokat kell követniük.
+
+### UC-09 – Tranzakciók szűrése
+
+**Szereplő:** Felhasználó
+
+A felhasználó az alábbi szempontok szerint szűrheti a tranzakciókat:
+- Dátumtartomány.
+- Tranzakció típusa.
+- Kategória.
+- Minimális és maximális összeg.
+- Leírás vagy kulcsszó.
+
+A rendszer kizárólag a hitelesített felhasználó tranzakcióira alkalmazhatja a szűrőfeltételeket.
+
+### UC-10 – Kategóriák kezelése
+
+**Szereplő:** Felhasználó
+
+**Alapfolyamat:**
+1. A felhasználó megnyitja a kategóriakezelést.
+2. A rendszer megjeleníti a rendszerszintű és a felhasználó saját kategóriáit.
+3. A felhasználó létrehoz, módosít vagy töröl egy személyes kategóriát.
+4. A backend ellenőrzi a kategória nevét és típusát.
+5. A rendszer elmenti a módosítást.
+
+**Üzleti szabályok:**
+- A rendszerszintű kategóriákat a normál felhasználók nem módosíthatják és nem törölhetik.
+- Egy kategória nem törölhető, amíg meglévő tranzakciók vagy költségkeretek hivatkoznak rá, kivéve, ha külön átsorolási folyamat kerül megvalósításra.
+- A bevételi és kiadási kategóriákat külön kell kezelni.
+
+### UC-11 – CSV-fájl importálása
+
+**Szereplő:** Felhasználó
+
+**Előfeltételek:**
+- A felhasználó hitelesített állapotban van.
+- A feltöltött fájl támogatott CSV-fájl.
+
+**Alapfolyamat:**
+1. A felhasználó megnyitja az importálási oldalt.
+2. Kiválaszt egy CSV-fájlt.
+3. Beállítja vagy megerősíti a CSV-oszlopok megfeleltetését.
+4. A frontend feltölti a fájlt.
+5. A backend létrehoz egy importálási köteget.
+6. A rendszer ellenőrzi a fájl szerkezetét.
+7. A rendszer feldolgozza a sorokat.
+8. Az érvényes tranzakciók elmentésre kerülnek.
+9. Az érvénytelen sorok importálási hibaként kerülnek rögzítésre.
+10. A duplikált sorok kihagyásra kerülnek.
+11. A rendszer frissíti az importálási köteg állapotát.
+
+**Alternatív folyamatok:**
+- A nem támogatott fájlformátumokat a rendszer elutasítja.
+- Hibás CSV-struktúra esetén az importálás sikertelen.
+- Az üres fájlokat a rendszer elutasítja.
+- Részleges siker engedélyezett, ha egyes sorok hibás adatokat tartalmaznak.
+
+**Utófeltételek:**
+- Az importálási köteg és annak feldolgozási eredményei elmentésre kerülnek.
+
+### UC-12 – Importált tranzakciók ellenőrzése
+
+**Szereplő:** Rendszer
+
+A rendszer minden importált sort ellenőriz.
+
+Az ellenőrzés az alábbiakat foglalja magában:
+- Kötelező mezők megléte.
+- Érvényes dátumformátum.
+- Pozitív, numerikus összeg.
+- Támogatott pénznem.
+- Érvényes tranzakciótípus.
+- Érvényes szöveghossz.
+- Érvényes kategóriamegfeleltetés, amennyiben meg van adva.
+
+Az érvénytelen sorok nem kerülnek importálásra, és a rendszer megfelelő hibaüzenetet rendel hozzájuk.
+
+### UC-13 – Duplikált tranzakciók felismerése
+
+**Szereplő:** Rendszer
+
+**Alapfolyamat:**
+1. A rendszer egységesíti az importált tranzakciók adatait.
+2. A releváns tranzakciós mezők alapján determinisztikus ujjlenyomatot számít.
+3. Ellenőrzi, hogy ugyanez az ujjlenyomat létezik-e már az adott felhasználónál.
+4. Ha talál egyezést, a sort duplikátumként jelöli meg.
+5. Ellenkező esetben a tranzakció importálható.
+
+**Üzleti szabályok:**
+- A duplikációfelismerést felhasználónként elkülönítve kell végrehajtani.
+- Az ujjlenyomatnak olyan releváns mezőket kell tartalmaznia, mint a dátum, az összeg, a pénznem, a tranzakció típusa és az egységesített leírás.
+- A duplikációfelismerés gyakorlati heurisztika, nem bizonyíték arra, hogy két tranzakció teljesen azonos.
+- A felhasználót tájékoztatni kell a kihagyott duplikátumokról.
+
+### UC-14 – Importálási eredmények megtekintése
+
+**Szereplő:** Felhasználó
+
+A felhasználó az alábbi információkat tekintheti meg:
+- Az eredeti fájl neve.
+- Az importálás állapota.
+- A sorok teljes száma.
+- Sikeresen importált sorok száma.
+- Sikertelen sorok száma.
+- Duplikált sorok száma.
+- Az egyes sorokhoz tartozó részletes hibaüzenetek.
+
+### UC-15 – Tranzakció kategorizálása szabályok alapján
+
+**Szereplő:** Rendszer
+
+**Alapfolyamat:**
+1. A rendszer megkap egy kategorizálást igénylő tranzakciót.
+2. Betölti a felhasználó aktív szabályait.
+3. A szabályokat prioritásuk szerint kiértékeli.
+4. Kiválasztja az első érvényes egyezést adó szabályt.
+5. A tranzakcióhoz rendeli a megfelelő kategóriát.
+6. Rögzíti, hogy a kategorizálás szabályalapon történt.
+
+**Üzleti szabályok:**
+- A felhasználó által meghatározott szabályok elsőbbséget élveznek a gépi tanulási előrejelzésekkel szemben.
+- A szabályoknak illeszkedniük kell a tranzakció típusához és a kategória típusához.
+- Az inaktív szabályokat figyelmen kívül kell hagyni.
+- A magasabb prioritású szabályokat kell először kiértékelni.
+
+### UC-16 – Kategorizálási szabályok kezelése
+
+**Szereplő:** Felhasználó
+
+A felhasználó az alábbi műveleteket végezheti:
+- Új szabály létrehozása.
+- Meglévő szabály szerkesztése.
+- A szabály prioritásának módosítása.
+- A szabály aktiválása vagy deaktiválása.
+- A szabály törlése.
+
+Egy szabály az alábbi adatokat tartalmazza:
+- Kulcsszó vagy kifejezés.
+- Egyezési típus.
+- Célkategória.
+- Prioritás.
+- Aktív állapot.
 
-**Actor:** User
+Kezdetben az alábbi egyezési típusokat kell támogatni:
+- Pontos egyezés.
+- Tartalmazza.
+- Ezzel kezdődik.
 
-**Preconditions:**
-- The user is authenticated.
+### UC-17 – Tranzakció kategóriájának javítása
 
-**Main Flow:**
-1. The user opens the transaction form.
-2. The user selects income or expense.
-3. The user enters the amount, currency, description, and transaction date.
-4. The user optionally selects a category.
-5. The backend validates the submitted data.
-6. The system checks whether the selected category belongs to the user or is a system category.
-7. The categorization workflow is executed if automatic categorization is enabled and a category has not been explicitly selected.
-8. The transaction is saved.
-9. The frontend displays the updated transaction.
+**Szereplő:** Felhasználó
 
-**Alternative Flows:**
-- Invalid or non-positive amounts are rejected.
-- A category with an incompatible transaction type is rejected.
-- A category belonging to another user cannot be assigned.
-- If automatic categorization cannot determine a category, the transaction remains uncategorized or requires manual review.
-
-**Postconditions:**
-- The transaction is stored and associated with the authenticated user.
-
-### UC-06 – View Transactions
-
-**Actor:** User
-
-**Main Flow:**
-1. The user opens the transaction list.
-2. The backend retrieves transactions belonging to the authenticated user.
-3. The system returns paginated results.
-4. The frontend displays the transactions.
-
-**Business Rules:**
-- Users can only view their own transactions.
-- Results should be paginated.
-- Sorting should be supported by transaction date and amount.
+**Alapfolyamat:**
+1. A felhasználó megnyit egy tranzakciót.
+2. Kiválaszt egy másik kategóriát.
+3. A backend ellenőrzi a kategória érvényességét.
+4. A rendszer frissíti a tranzakciót.
+5. Létrejön egy kategorizálási visszajelzést rögzítő rekord.
+6. A tranzakció manuálisan kategorizáltként lesz megjelölve.
 
-### UC-07 – Update Transaction
+**Üzleti szabályok:**
+- A manuális javítás elsőbbséget élvez az automatikus javaslatokkal szemben.
+- A visszajelzéseket meg kell őrizni a későbbi modellértékeléshez és -tanításhoz.
+- A visszajelzés mentése nem indítja el automatikusan a modell újratanítását.
 
-**Actor:** User
+### UC-18 – Tranzakció kategorizálása ML.NET segítségével
 
-**Main Flow:**
-1. The user selects a transaction.
-2. The system verifies ownership.
-3. The user modifies the transaction data.
-4. The backend validates the changes.
-5. The system saves the updated transaction.
-6. Related analytics and derived results are marked for recalculation where necessary.
+**Szereplő:** Rendszer
 
-**Alternative Flows:**
-- A transaction belonging to another user is not accessible.
-- Invalid category assignments are rejected.
+**Előfeltételek:**
+- Egyetlen alkalmazható, felhasználó által meghatározott szabály sem illeszkedett a tranzakcióra.
+- Létezik betanított és elérhető gépi tanulási modell.
 
-### UC-08 – Delete Transaction
+**Alapfolyamat:**
+1. A rendszer egységesíti a tranzakció leírását.
+2. Az ML.NET modell megkapja a tranzakció jellemzőit.
+3. A modell előrejelzi a tranzakció kategóriáját.
+4. A rendszer kiértékeli az előrejelzés eredményét.
+5. Az alkalmazás megkapja az eredményt és a hozzá tartozó megbízhatósági információkat.
 
-**Actor:** User
+**Alternatív folyamatok:**
+- Ha nem érhető el modell, a tranzakció kategorizálatlan marad.
+- Ha a modell érvénytelen kategóriát ad vissza, az előrejelzést a rendszer elutasítja.
+- Ha a tranzakció típusa nem egyeztethető össze az előrejelzett kategóriával, az előrejelzést a rendszer elutasítja.
 
-**Main Flow:**
-1. The user selects a transaction for deletion.
-2. The system verifies ownership.
-3. The user confirms the deletion.
-4. The backend deletes the transaction.
-5. Related derived information is recalculated or invalidated.
+### UC-19 – Kategorizálási megbízhatóság értékelése
 
-**Business Rules:**
-- A user cannot delete another user's transaction.
-- Related records must follow the configured foreign-key deletion behavior.
+**Szereplő:** Rendszer
 
-### UC-09 – Filter Transactions
+A rendszer kiértékeli az előrejelzés megbízhatóságát.
 
-**Actor:** User
+A megbízhatósági küszöbértéknek konfigurálhatónak kell lennie, és kísérleti eredmények alapján kell meghatározni.
 
-The user can filter transactions by:
+**Javasolt kezdeti működés:**
+- Magas megbízhatóság esetén a rendszer automatikusan hozzárendelheti az előrejelzett kategóriát.
+- Közepes vagy alacsony megbízhatóság esetén a rendszer javaslatot jelenít meg, és manuális megerősítést kér.
 
-- Date range.
-- Transaction type.
-- Category.
-- Minimum and maximum amount.
-- Description or keyword.
+A végleges küszöbértékeket validációs eredmények alapján kell kiválasztani, nem önkényes feltételezések szerint.
 
-The system applies filters only to the authenticated user's transactions.
+### UC-20 – Gépi tanulási modell tanítása és értékelése
 
-### UC-10 – Manage Categories
+**Szereplő:** Rendszergazda / Fejlesztő
 
-**Actor:** User
+**Alapfolyamat:**
+1. A rendszer előkészíti a tanító adathalmazt a jóváhagyott és javított tranzakciók alapján.
+2. Az adathalmaz megtisztításra és egységesítésre kerül.
+3. Az adatokat tanító és kiértékelő halmazokra bontja.
+4. A rendszer betanítja az ML.NET-folyamatot.
+5. A modellt megfelelő osztályozási mérőszámok alapján értékeli.
+6. Az eredményeket összehasonlítja a meglévő modellel és a szabályalapú alapmódszerrel.
+7. Új modell csak akkor aktiválható, ha megfelel az előre meghatározott értékelési feltételeknek.
 
-**Main Flow:**
-1. The user opens category management.
-2. The system displays system categories and the user's own categories.
-3. The user creates, updates, or deletes a personal category.
-4. The backend validates the category name and type.
-5. The system saves the change.
+**Értékelési mérőszámok:**
+- Pontosság (Accuracy).
+- Precizitás (Precision).
+- Fedés (Recall).
+- F1-mérték (F1-score).
+- Előrejelzés feldolgozási ideje.
 
-**Business Rules:**
-- System categories cannot be modified or deleted by regular users.
-- A category cannot be deleted while it is referenced by existing transactions or budgets unless an explicit reassignment process is implemented.
-- Income and expense categories must remain separate.
+**Üzleti szabályok:**
+- A tanító- és tesztadatokat külön kell választani az adatszivárgás elkerülése érdekében.
+- A visszajelzések nem aktiválhatnak automatikusan új modellt.
+- A modellverziókat és az értékelési eredményeket dokumentálni kell.
 
-### UC-11 – Import CSV File
+### UC-21 – Pénzügyi áttekintés megtekintése
 
-**Actor:** User
+**Szereplő:** Felhasználó
 
-**Preconditions:**
-- The user is authenticated.
-- The uploaded file is a supported CSV file.
+A rendszer a kiválasztott időszakra vonatkozóan megjeleníti:
+- Összes bevétel.
+- Összes kiadás.
+- Nettó pénzforgalom.
+- Tranzakciók száma.
 
-**Main Flow:**
-1. The user opens the import page.
-2. The user selects a CSV file.
-3. The user selects or confirms the CSV column mapping.
-4. The frontend uploads the file.
-5. The backend creates an import batch.
-6. The system validates the file structure.
-7. The system processes the rows.
-8. Valid transactions are stored.
-9. Invalid rows are recorded as import errors.
-10. Duplicate rows are skipped.
-11. The import batch status is updated.
+A nettó pénzforgalom számítása:
 
-**Alternative Flows:**
-- Unsupported file formats are rejected.
-- Invalid CSV structure results in a failed import.
-- Empty files are rejected.
-- Partial success is allowed when individual rows contain errors.
+`Összes bevétel - Összes kiadás`
 
-**Postconditions:**
-- The import batch and its processing results are stored.
+Ez az érték nem azonos a felhasználó tényleges bankszámlaegyenlegével.
 
-### UC-12 – Validate Imported Transactions
+### UC-22 – Kiadások elemzése kategóriánként
 
-**Actor:** System
+**Szereplő:** Felhasználó
 
-The system validates each imported row.
+A rendszer kategóriánként csoportosítja a kiadásokat, és megjeleníti:
+- Az összesített összeget.
+- A teljes kiadáson belüli százalékos arányt.
+- A tranzakciók számát.
 
-Validation includes:
+Közvetlenül csak az azonos pénznemű tranzakciók összegei összesíthetők.
 
-- Required fields.
-- Valid date format.
-- Positive numeric amount.
-- Supported currency.
-- Valid transaction type.
-- Valid text length.
-- Valid category mapping, if provided.
+### UC-23 – Pénzügyi időszakok összehasonlítása
 
-Invalid rows are not imported and are associated with an appropriate error message.
+**Szereplő:** Felhasználó
 
-### UC-13 – Detect Duplicate Transactions
+A felhasználó kiválaszt két időszakot.
 
-**Actor:** System
+A rendszer összehasonlítja:
+- Az összes bevételt.
+- Az összes kiadást.
+- A nettó pénzforgalmat.
+- A kategóriánkénti kiadásokat.
 
-**Main Flow:**
-1. The system normalizes the imported transaction data.
-2. It calculates a deterministic fingerprint from relevant transaction fields.
-3. It checks whether the same fingerprint already exists for the user.
-4. If a match exists, the row is marked as a duplicate.
-5. Otherwise, the transaction can be imported.
+A rendszer kiszámítja az abszolút és – ahol értelmezhető – a százalékos eltéréseket.
 
-**Business Rules:**
-- Duplicate detection must be scoped to the user.
-- The fingerprint should include relevant fields such as date, amount, currency, type, and normalized description.
-- Duplicate detection is a practical heuristic, not proof that two transactions are identical.
-- The user should be informed about skipped duplicates.
+### UC-24 – Ismétlődő kiadások felismerése
 
-### UC-14 – View Import Results
+**Szereplő:** Rendszer
 
-**Actor:** User
+**Alapfolyamat:**
+1. A rendszer elemzi a korábbi kiadási tranzakciókat.
+2. A tranzakciókat a valószínű kereskedő vagy egységesített leírás, valamint a kategória alapján csoportosítja.
+3. Kiértékeli a hasonló összegeket és az ismétlődő dátumközöket.
+4. A rendszer azonosítja a valószínűleg ismétlődő kiadásokat.
+5. Megbízhatósági értéket számít.
+6. Az eredményeket elmenti és megjeleníti a felhasználónak.
 
-The user can view:
+Az ismétlődő tranzakciók felismerése becslésen alapul, ezért az eredményt nem szabad megerősített előfizetésként kezelni.
 
-- Original file name.
-- Import status.
-- Total rows.
-- Successfully imported rows.
-- Failed rows.
-- Duplicate rows.
-- Row-level error details.
+### UC-25 – Pénzügyi anomáliák felismerése
 
-### UC-15 – Categorize Transaction Using Rules
+**Szereplő:** Rendszer
 
-**Actor:** System
+A rendszer elemzi a korábbi tranzakciókat, és azonosítja a szokatlan értékeket.
 
-**Main Flow:**
-1. The system receives a transaction requiring categorization.
-2. It loads the active rules belonging to the user.
-3. Rules are evaluated according to priority.
-4. The first valid matching rule is selected.
-5. The transaction is assigned to the corresponding category.
-6. The categorization method is recorded as rule-based.
+**Kezdetben alkalmazott módszerek:**
+- Az átlagtól való statisztikai eltérés vizsgálata.
+- Szórás.
+- Z-pontszám (Z-score).
+- Kategóriaszintű összehasonlítás.
 
-**Business Rules:**
-- User-defined rules take precedence over ML predictions.
-- Rules must match the transaction type and category type.
-- Inactive rules are ignored.
-- Higher-priority rules are evaluated first.
+**Alapfolyamat:**
+1. A rendszer lekéri a felhasználó releváns tranzakciós előzményeit.
+2. A tranzakciókat kompatibilis kategória és pénznem alapján csoportosítja.
+3. Kiszámítja a statisztikai mutatókat.
+4. Azonosítja a szokatlan tranzakciókat.
+5. Elmenti az anomáliákat tartalmazó rekordokat.
+6. A felhasználó áttekintheti az eredményeket.
 
-### UC-16 – Manage Categorization Rules
+**Üzleti szabályok:**
+- Az anomália nem jelenti automatikusan azt, hogy a tranzakció csalárd vagy hibás.
+- A nem elegendő mennyiségű előzményadat kezelését egyértelműen meg kell határozni.
+- Az anomáliadetektálás küszöbértékének konfigurálhatónak kell lennie.
 
-**Actor:** User
+### UC-26 – Költségkeretek kezelése
 
-The user can:
+**Szereplő:** Felhasználó
 
-- Create a rule.
-- Edit a rule.
-- Change its priority.
-- Activate or deactivate it.
-- Delete a rule.
+A felhasználó az alábbi műveleteket végezheti:
+- Költségkeret létrehozása.
+- Kategória kiválasztása.
+- Költségkeret összegének beállítása.
+- Időszak kiválasztása.
+- Meglévő költségkeret módosítása.
+- Költségkeret törlése.
 
-A rule contains a keyword or phrase, matching type, target category, priority, and active state.
+A költségkeretek kezdetben kiadási kategóriákhoz kapcsolódnak.
 
-Supported matching types should initially include:
-- Exact match.
-- Contains.
-- Starts with.
+### UC-27 – Költségkeretek felhasználásának nyomon követése
 
-### UC-17 – Correct Transaction Category
+**Szereplő:** Felhasználó
 
-**Actor:** User
+A rendszer kiszámítja:
+- A költségkeret összegét.
+- Az adott időszak tényleges kiadásait.
+- A fennmaradó összeget.
+- A felhasználás százalékos arányát.
 
-**Main Flow:**
-1. The user opens a transaction.
-2. The user selects a different category.
-3. The backend validates the category.
-4. The system updates the transaction.
-5. A categorization feedback record is created.
-6. The transaction is marked as manually categorized.
+A rendszer figyelmeztetést jelenít meg, ha a költségkeret felhasználása megközelíti vagy meghaladja a meghatározott limitet.
 
-**Business Rules:**
-- Manual correction takes precedence over automatic suggestions.
-- Feedback is retained for later model evaluation and training.
-- Saving feedback does not automatically retrain the model.
+A költségkeret számításainak a költségkerettel azonos pénznemet kell használniuk.
 
-### UC-18 – Categorize Transaction Using ML.NET
+### UC-28 – Kiadási előrejelzések készítése
 
-**Actor:** System
+**Szereplő:** Rendszer
 
-**Preconditions:**
-- No applicable user-defined rule has matched.
-- A trained and available ML model exists.
+A rendszer az alábbi módszerekkel készít előrejelzéseket:
+- Mozgóátlag.
+- Lineáris regresszió.
 
-**Main Flow:**
-1. The system normalizes the transaction description.
-2. The ML.NET model receives the transaction features.
-3. The model predicts a category.
-4. The prediction result is evaluated.
-5. The result and confidence information are returned to the application.
+**Alapfolyamat:**
+1. A rendszer lekéri a korábbi havi pénzügyi adatokat.
+2. Ellenőrzi, hogy rendelkezésre áll-e elegendő előzményadat.
+3. Előkészíti az idősorokat.
+4. Az előrejelzési algoritmusok elkészítik a becsléseket.
+5. A rendszer elmenti az eredményeket.
+6. A frontend megjeleníti a korábbi és az előrejelzett értékeket.
 
-**Alternative Flows:**
-- If no model is available, the transaction remains uncategorized.
-- If the model returns an invalid category, the prediction is rejected.
-- If the transaction type is incompatible with the predicted category, the prediction is rejected.
+Az előrejelzéseket egyértelműen becslésként kell megjelölni.
 
-### UC-19 – Evaluate Categorization Confidence
+### UC-29 – Előrejelzési módszerek összehasonlítása
 
-**Actor:** System
+**Szereplő:** Rendszergazda / Fejlesztő
 
-The system evaluates the prediction confidence.
+A rendszer időrendi sorrendbe rendezett múltbeli adatok segítségével értékeli az előrejelzési módszereket.
 
-The confidence threshold must be configurable and validated experimentally.
+**Mérőszámok:**
+- Átlagos abszolút hiba (Mean Absolute Error – MAE).
+- Gyökös átlagos négyzetes hiba (Root Mean Squared Error – RMSE).
 
-Suggested initial behavior:
+Az értékelés során el kell kerülni, hogy a modell tanítása során jövőbeli megfigyeléseket használjon fel.
 
-- High confidence: the system can automatically assign the predicted category.
-- Medium or low confidence: the system displays a suggestion and requests manual confirmation.
+### UC-30 – Pénzügyi előrejelzések megtekintése
 
-The final thresholds should be selected based on validation results, not arbitrary assumptions.
+**Szereplő:** Felhasználó
 
-### UC-20 – Train and Evaluate ML Model
+A felhasználó az alábbi adatokat tekintheti meg:
+- Előrejelzett havi kiadások.
+- Előrejelzett havi nettó pénzforgalom.
+- Az előrejelzéshez felhasznált korábbi adatok.
+- Az alkalmazott előrejelzési módszer.
+- Az előrejelzés időszaka.
 
-**Actor:** Administrator / Developer
+Ha nem áll rendelkezésre elegendő adat, a rendszer tájékoztatja a felhasználót arról, hogy miért nem készíthető megbízható előrejelzés.
 
-**Main Flow:**
-1. The system prepares a training dataset from approved and corrected transactions.
-2. The dataset is cleaned and normalized.
-3. The data is split into training and evaluation sets.
-4. The ML.NET pipeline is trained.
-5. The model is evaluated using appropriate classification metrics.
-6. The results are compared with the existing model and rule-based baseline.
-7. A model is activated only if it satisfies the defined evaluation criteria.
+### UC-31 – Vezérlőpult megtekintése
 
-**Evaluation Metrics:**
-- Accuracy.
-- Precision.
-- Recall.
-- F1-score.
-- Prediction processing time.
+**Szereplő:** Felhasználó
 
-**Business Rules:**
-- Training and test data must be separated to avoid data leakage.
-- Feedback must not automatically activate a new model.
-- Model versions and evaluation results should be documented.
+A vezérlőpult összefoglaló képet ad a felhasználó pénzügyi helyzetéről.
 
-### UC-21 – View Financial Overview
+Az alábbi információkat tartalmazhatja:
+- Bevételi és kiadási összesítés.
+- Nettó pénzforgalom.
+- Kiadások kategóriánkénti megoszlása.
+- Havi pénzügyi trendek.
+- Költségkeretek felhasználása.
+- Legutóbbi tranzakciók.
+- Felismert anomáliák.
+- Ismétlődő kiadások.
+- Pénzügyi előrejelzések.
 
-**Actor:** User
+A vezérlőpult kizárólag a hitelesített felhasználó adatait használhatja.
 
-The system displays the selected period's:
+## 5. Általános üzleti szabályok
 
-- Total income.
-- Total expenses.
-- Net cash flow.
-- Number of transactions.
+Az alábbi szabályok az alkalmazás egészére érvényesek:
 
-Net cash flow is calculated as:
+1. Minden pénzügyi rekord pontosan egy felhasználóhoz tartozik.
+2. A felhasználók kizárólag a saját pénzügyi adataikhoz férhetnek hozzá.
+3. A rendszerszintű kategóriák több felhasználó között is megoszthatók.
+4. A személyes kategóriák kizárólag a tulajdonosaik számára érhetők el.
+5. A tranzakciók összegeinek pozitívnak kell lenniük.
+6. A tranzakció típusa határozza meg, hogy az összeg bevételt vagy kiadást jelent.
+7. A bevételi és kiadási kategóriák nem keverhetők.
+8. Különböző pénznemű összegeket nem szabad összeadni átváltási mechanizmus nélkül.
+9. A felhasználó által meghatározott kategorizálási szabályok elsőbbséget élveznek a gépi tanulási előrejelzésekkel szemben.
+10. A manuális kategorizálás elsőbbséget élvez az automatikus kategorizálással szemben.
+11. A gépi tanulási előrejelzések javaslatnak minősülnek, kivéve, ha a beállított megbízhatósági szabályzat engedélyezi az automatikus kategória-hozzárendelést.
+12. A visszajelzések nem indítják el automatikusan a modell újratanítását.
+13. Az anomáliadetektálás eredményei tájékoztató jellegűek.
+14. Az előrejelzéseknél egyértelműen jelezni kell a bizonytalanságot és a korlátokat.
+15. Nem elegendő mennyiségű előzményadat esetén nem szabad félrevezető előrejelzéseket készíteni.
 
-`Total income - Total expenses`
+## 6. Nem funkcionális elvárások
 
-This value is not the user's actual bank account balance.
-
-### UC-22 – Analyze Expenses by Category
-
-**Actor:** User
-
-The system groups expenses by category and displays:
-
-- Total amount.
-- Percentage of total expenses.
-- Number of transactions.
-
-Only transactions with compatible currencies can be aggregated directly.
-
-### UC-23 – Compare Financial Periods
-
-**Actor:** User
-
-The user selects two periods.
-
-The system compares:
-
-- Total income.
-- Total expenses.
-- Net cash flow.
-- Category-level expenses.
-
-The system calculates absolute and percentage differences where meaningful.
-
-### UC-24 – Detect Recurring Expenses
-
-**Actor:** System
-
-**Main Flow:**
-1. The system analyzes historical expense transactions.
-2. Transactions are grouped by likely merchant or normalized description and category.
-3. Similar amounts and recurring date intervals are evaluated.
-4. The system identifies likely recurring expenses.
-5. A confidence value is calculated.
-6. Results are stored and displayed to the user.
-
-Recurring transaction detection is an estimate and must not be treated as a confirmed subscription.
-
-### UC-25 – Detect Financial Anomalies
-
-**Actor:** System
-
-The system analyzes historical transactions and identifies unusual values.
-
-Initial methods:
-
-- Statistical deviation from the average.
-- Standard deviation.
-- Z-score.
-- Category-level comparison.
-
-**Main Flow:**
-1. The system retrieves the user's relevant transaction history.
-2. Transactions are grouped by compatible category and currency.
-3. Statistical indicators are calculated.
-4. Unusual transactions are identified.
-5. Anomaly records are stored.
-6. The user can review the results.
-
-**Business Rules:**
-- An anomaly is not automatically a fraudulent or incorrect transaction.
-- Insufficient historical data must be handled explicitly.
-- The detection threshold should be configurable.
-
-### UC-26 – Manage Budgets
-
-**Actor:** User
-
-The user can:
-
-- Create a budget.
-- Select a category.
-- Set a budget amount.
-- Select a period.
-- Edit an existing budget.
-- Delete a budget.
-
-Budgets are initially intended for expense categories.
-
-### UC-27 – Monitor Budget Usage
-
-**Actor:** User
-
-The system calculates:
-
-- Budget amount.
-- Actual expenses in the budget period.
-- Remaining amount.
-- Usage percentage.
-
-The system displays a warning when the budget is close to or above its limit.
-
-Budget calculations must use the same currency as the budget.
-
-### UC-28 – Generate Expense Forecasts
-
-**Actor:** System
-
-The system generates forecasts using:
-
-- Moving average.
-- Linear regression.
-
-**Main Flow:**
-1. The system retrieves historical monthly financial data.
-2. It validates whether sufficient historical data is available.
-3. It prepares the time series.
-4. The forecasting algorithms generate predictions.
-5. The system stores the results.
-6. The frontend displays historical values and predicted values.
-
-Forecasts should be clearly marked as estimates.
-
-### UC-29 – Compare Forecasting Methods
-
-**Actor:** Administrator / Developer
-
-The system evaluates forecasting methods using time-ordered historical data.
-
-Metrics:
-
-- Mean Absolute Error (MAE).
-- Root Mean Squared Error (RMSE).
-
-The evaluation must avoid using future observations during model training.
-
-### UC-30 – View Financial Forecasts
-
-**Actor:** User
-
-The user can view:
-
-- Predicted monthly expenses.
-- Predicted monthly net cash flow.
-- Historical data used for the forecast.
-- Forecasting method.
-- Forecast period.
-
-If insufficient data is available, the system explains why a reliable forecast cannot be generated.
-
-### UC-31 – View Dashboard
-
-**Actor:** User
-
-The dashboard provides a summarized view of the user's financial situation.
-
-It may include:
-
-- Income and expense summary.
-- Net cash flow.
-- Expense distribution by category.
-- Monthly financial trends.
-- Budget usage.
-- Recent transactions.
-- Detected anomalies.
-- Recurring expenses.
-- Financial forecasts.
-
-The dashboard must use only the authenticated user's data.
-
-## 5. Global Business Rules
-
-The following rules apply across the application:
-
-1. Every financial record belongs to exactly one user.
-2. Users can only access their own financial data.
-3. System categories may be shared between users.
-4. Personal categories are only accessible to their owners.
-5. Transaction amounts must be positive.
-6. Transaction type determines whether an amount represents income or expense.
-7. Income and expense categories cannot be mixed.
-8. Different currencies must not be added together without a conversion mechanism.
-9. User-defined categorization rules take precedence over ML predictions.
-10. Manual categorization takes precedence over automatic categorization.
-11. ML predictions are suggestions unless the configured confidence policy allows automatic assignment.
-12. Feedback does not automatically trigger model retraining.
-13. Anomaly detection results are informational.
-14. Forecasts must clearly indicate their uncertainty and limitations.
-15. Insufficient historical data must not produce misleading forecasts.
-
-## 6. Non-Functional Expectations
-
-- Authentication and authorization must be enforced on the backend.
-- API endpoints must validate ownership of requested resources.
-- Larger imports and analytical tasks should not block HTTP requests unnecessarily.
-- Lists should support pagination.
-- User input must be validated on both frontend and backend.
-- Important operations should be covered by automated tests.
-- Errors should be logged without exposing sensitive financial information.
-- The application should be structured so that additional categorization and forecasting methods can be introduced later.</
+- A hitelesítést és a jogosultságkezelést a backendnek kell kikényszerítenie.
+- Az API-végpontoknak ellenőrizniük kell a kért erőforrások tulajdonjogát.
+- A nagyobb importálási és elemzési feladatok nem akadályozhatják szükségtelenül a HTTP-kérések kiszolgálását.
+- A listáknak támogatniuk kell a lapozást.
+- A felhasználói bemeneteket mind a frontend, mind a backend oldalán ellenőrizni kell.
+- A fontos műveleteket automatizált tesztekkel kell lefedni.
+- A hibákat naplózni kell anélkül, hogy bizalmas pénzügyi információk kerülnének a naplókba.
+- Az alkalmazás felépítésének lehetővé kell tennie további kategorizálási és előrejelzési módszerek későbbi bevezetését.

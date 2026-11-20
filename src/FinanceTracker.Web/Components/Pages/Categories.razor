@@ -1,0 +1,312 @@
+﻿@page "/categories"
+@attribute [Authorize]
+@inject CategoryApiClient Api
+@inject JwtAuthenticationStateProvider Session
+@inject NavigationManager Navigation
+@inject UserDisplayState UserState
+
+<PageTitle>Kategóriák</PageTitle>
+
+<PageHeader Title="Kategóriák" Subtitle="A rendszerkategóriák mellett saját kategóriákat is létrehozhatsz.">
+    <Actions>
+        @if (!_formOpen)
+        {
+            <button type="button" class="btn btn-primary" @onclick="OpenCreate">
+                <i class="bi bi-plus-lg" aria-hidden="true"></i> Új kategória
+            </button>
+        }
+    </Actions>
+</PageHeader>
+
+@if (_success is not null)
+{
+    <StatusMessage Kind="success">@_success</StatusMessage>
+}
+
+@if (_pageError is not null)
+{
+    <StatusMessage Kind="danger">@_pageError</StatusMessage>
+}
+
+@if (_formOpen)
+{
+    <div class="ft-card mb-4" style="max-width: 640px;">
+        <div class="ft-card-header">
+            <h2 class="ft-card-title">@(_editingId is null ? "Új kategória" : "Kategória szerkesztése")</h2>
+        </div>
+
+        <EditForm Model="_model" OnValidSubmit="SaveAsync">
+            <DataAnnotationsValidator />
+
+            <div class="ft-card-body">
+                @if (_formErrors.Count > 0)
+                {
+                    <StatusMessage Kind="danger" Messages="_formErrors" />
+                }
+
+                <div class="mb-3">
+                    <label class="form-label" for="cat-name">Név</label>
+                    <InputText id="cat-name" class="form-control" maxlength="100" placeholder="Például: Kávé" @bind-Value="_model.Name" />
+                    <ValidationMessage For="() => _model.Name" />
+                </div>
+
+                <div>
+                    <span class="form-label d-block">Típus</span>
+                    <InputRadioGroup @bind-Value="_model.Type">
+                        <div class="segmented" role="group" aria-label="Kategória típusa">
+                            <InputRadio class="btn-check" id="cat-expense" Value="CategoryType.Expense" />
+                            <label class="seg-option seg-expense" for="cat-expense"><i class="bi bi-arrow-up-right" aria-hidden="true"></i> Kiadás</label>
+                            <InputRadio class="btn-check" id="cat-income" Value="CategoryType.Income" />
+                            <label class="seg-option seg-income" for="cat-income"><i class="bi bi-arrow-down-left" aria-hidden="true"></i> Bevétel</label>
+                        </div>
+                    </InputRadioGroup>
+                    <div class="form-text mt-2">A bevételi és a kiadási kategóriák külön kezelendők; a típus csak használaton kívüli kategóriánál módosítható.</div>
+                </div>
+            </div>
+
+            <div class="ft-card-footer justify-content-end">
+                <button type="button" class="btn btn-outline-secondary" disabled="@_busy" @onclick="CloseForm">Mégse</button>
+                <button type="submit" class="btn btn-primary" disabled="@_busy">
+                    @if (_busy)
+                    {
+                        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                    }
+                    Mentés
+                </button>
+            </div>
+        </EditForm>
+    </div>
+}
+
+@if (_loading)
+{
+    <div class="ft-card"><LoadingState /></div>
+}
+else
+{
+    <div class="cat-grid">
+        @foreach (var group in Groups)
+        {
+            <div class="ft-card">
+                <div class="ft-card-header">
+                    <h2 class="ft-card-title">
+                        <i class="bi @(group.Type == CategoryType.Expense ? "bi-arrow-up-right text-danger" : "bi-arrow-down-left text-success") me-1" aria-hidden="true"></i>
+                        @group.Title
+                    </h2>
+                    <span class="text-muted small">@group.Items.Count db</span>
+                </div>
+
+                <ul class="cat-list">
+                    @foreach (var category in group.Items)
+                    {
+                        <li class="cat-item">
+                            <span class="cat-dot @(category.Type == CategoryType.Expense ? "cat-dot-expense" : "cat-dot-income")"></span>
+                            <span class="cat-name">@category.Name</span>
+
+                            @if (category.IsSystemCategory)
+                            {
+                                <span class="pill" title="A rendszerkategória nem módosítható és nem törölhető."><i class="bi bi-lock-fill" aria-hidden="true"></i> Rendszer</span>
+                            }
+                            else
+                            {
+                                <span class="cat-actions">
+                                    <button type="button" class="icon-btn" title="Szerkesztés" aria-label="@($"{category.Name} szerkesztése")" @onclick="() => OpenEdit(category)"><i class="bi bi-pencil" aria-hidden="true"></i></button>
+                                    <button type="button" class="icon-btn danger" title="Törlés" aria-label="@($"{category.Name} törlése")" @onclick="() => AskDelete(category)"><i class="bi bi-trash3" aria-hidden="true"></i></button>
+                                </span>
+                            }
+                        </li>
+                    }
+
+                    @if (!group.Items.Any(c => !c.IsSystemCategory))
+                    {
+                        <li class="cat-empty">Még nincs saját @(group.Type == CategoryType.Expense ? "kiadási" : "bevételi") kategóriád.</li>
+                    }
+                </ul>
+            </div>
+        }
+    </div>
+}
+
+@if (_deleteTarget is not null)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="deleteCategoryTitle">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body p-4">
+                    <span class="modal-icon"><i class="bi bi-trash3" aria-hidden="true"></i></span>
+                    <h2 class="h5 mb-2" id="deleteCategoryTitle">Kategória törlése</h2>
+                    <p class="text-muted">Biztosan törölni szeretnéd a(z) <strong>@_deleteTarget.Name</strong> kategóriát? A művelet nem vonható vissza.</p>
+                    <p class="mb-0 small text-muted">Ha tranzakciók hivatkoznak a kategóriára, a törlés nem hajtható végre.</p>
+                </div>
+                <div class="modal-footer border-0 pt-0 px-4 pb-4">
+                    <button type="button" class="btn btn-outline-secondary" disabled="@_deleting" @onclick="CancelDelete">Mégse</button>
+                    <button type="button" class="btn btn-danger" disabled="@_deleting" @onclick="ConfirmDeleteAsync">
+                        @if (_deleting)
+                        {
+                            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                        }
+                        Törlés
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private sealed record CategoryGroup(string Title, CategoryType Type, IReadOnlyList<CategoryDto> Items);
+
+    private List<CategoryDto> _categories = new();
+    private CategoryFormModel _model = new();
+    private List<string> _formErrors = new();
+    private string? _pageError;
+    private string? _success;
+    private Guid? _editingId;
+    private bool _formOpen;
+    private bool _loading = true;
+    private bool _busy;
+
+    private CategoryDto? _deleteTarget;
+    private bool _deleting;
+
+    private IEnumerable<CategoryGroup> Groups
+    {
+        get
+        {
+            yield return new CategoryGroup("Kiadási kategóriák", CategoryType.Expense, ItemsOf(CategoryType.Expense));
+            yield return new CategoryGroup("Bevételi kategóriák", CategoryType.Income, ItemsOf(CategoryType.Income));
+        }
+    }
+
+    // A rendszerkategóriák elöl, utána a saját kategóriák név szerint.
+    private IReadOnlyList<CategoryDto> ItemsOf(CategoryType type)
+        => _categories
+            .Where(c => c.Type == type)
+            .OrderByDescending(c => c.IsSystemCategory)
+            .ThenBy(c => c.Name, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var result = await Api.GetAllAsync();
+        if (result.IsUnauthorized)
+        {
+            await SignOutAsync();
+            return;
+        }
+
+        if (result.IsSuccess)
+        {
+            _categories = result.Value!;
+        }
+        else
+        {
+            _pageError = string.Join(" ", result.Messages);
+        }
+
+        _loading = false;
+    }
+
+    private void OpenCreate()
+    {
+        _success = null;
+        _editingId = null;
+        _model = new CategoryFormModel();
+        _formErrors = new List<string>();
+        _formOpen = true;
+    }
+
+    private void OpenEdit(CategoryDto category)
+    {
+        _success = null;
+        _editingId = category.Id;
+        _model = CategoryFormModel.From(category);
+        _formErrors = new List<string>();
+        _formOpen = true;
+    }
+
+    private void CloseForm()
+    {
+        _formOpen = false;
+        _editingId = null;
+        _formErrors = new List<string>();
+    }
+
+    private async Task SaveAsync()
+    {
+        _busy = true;
+        _formErrors = new List<string>();
+
+        var isEdit = _editingId is not null;
+        var result = isEdit
+            ? await Api.UpdateAsync(_editingId!.Value, _model.ToUpdateCommand())
+            : await Api.CreateAsync(_model.ToCreateCommand());
+
+        _busy = false;
+
+        if (result.IsUnauthorized)
+        {
+            await SignOutAsync();
+            return;
+        }
+
+        if (!result.IsSuccess)
+        {
+            _formErrors = result.Messages.ToList();
+            return;
+        }
+
+        CloseForm();
+        _success = isEdit ? "A kategória módosítása sikeres." : "A kategória létrehozása sikeres.";
+        await LoadAsync();
+    }
+
+    private void AskDelete(CategoryDto category)
+    {
+        _success = null;
+        _pageError = null;
+        _deleteTarget = category;
+    }
+
+    private void CancelDelete() => _deleteTarget = null;
+
+    // UC-10: a törlés megerősítés után fut le; a használatban lévő kategóriát a backend elutasítja.
+    private async Task ConfirmDeleteAsync()
+    {
+        if (_deleteTarget is null)
+        {
+            return;
+        }
+
+        _deleting = true;
+        var result = await Api.DeleteAsync(_deleteTarget.Id);
+        _deleting = false;
+
+        if (result.IsUnauthorized)
+        {
+            await SignOutAsync();
+            return;
+        }
+
+        _deleteTarget = null;
+
+        if (!result.IsSuccess)
+        {
+            _pageError = string.Join(" ", result.Messages);
+            return;
+        }
+
+        _success = "A kategória törlése sikeres.";
+        await LoadAsync();
+    }
+
+    private async Task SignOutAsync()
+    {
+        UserState.Set(null);
+        await Session.SignOutAsync();
+        Navigation.NavigateTo("login");
+    }
+}
