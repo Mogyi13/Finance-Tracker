@@ -1,0 +1,87 @@
+﻿@using System.Globalization
+
+<div class="period-picker">
+    @if (ShowPresets)
+    {
+        <div class="period-presets" role="group" aria-label="Gyors időszakválasztás">
+            @foreach (var preset in PeriodPreset.All)
+            {
+                <button type="button" class="btn btn-outline-secondary btn-sm @(IsActive(preset) ? "active" : null)"
+                        aria-pressed="@(IsActive(preset) ? "true" : "false")"
+                        @onclick="() => SelectAsync(preset)">
+                    @preset.Label
+                </button>
+            }
+        </div>
+    }
+
+    <div class="period-dates">
+        <div>
+            <label class="form-label" for="@($"{Id}-from")">Kezdő dátum</label>
+            <input id="@($"{Id}-from")" type="date" class="form-control" value="@Format(From)" @onchange="OnFromChangedAsync" />
+        </div>
+        <div>
+            <label class="form-label" for="@($"{Id}-to")">Záró dátum</label>
+            <input id="@($"{Id}-to")" type="date" class="form-control" value="@Format(To)" @onchange="OnToChangedAsync" />
+        </div>
+    </div>
+
+    @if (_error is not null)
+    {
+        <div class="period-error" role="alert">@_error</div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Id { get; set; } = "period";
+
+    [Parameter] public DateOnly From { get; set; }
+
+    [Parameter] public DateOnly To { get; set; }
+
+    [Parameter] public bool ShowPresets { get; set; } = true;
+
+    /// <summary>Érvényes időszakváltáskor hívódik (gyors választás vagy dátum módosítása után).</summary>
+    [Parameter] public EventCallback<DateRange> Changed { get; set; }
+
+    private string? _error;
+
+    private static string Format(DateOnly date) => date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+    private static DateOnly Today => DateOnly.FromDateTime(DateTime.Now);
+
+    private bool IsActive(PeriodPreset preset)
+    {
+        var range = preset.Resolve(Today);
+        return range.From == From && range.To == To;
+    }
+
+    private async Task SelectAsync(PeriodPreset preset)
+    {
+        _error = null;
+        await Changed.InvokeAsync(preset.Resolve(Today));
+    }
+
+    private Task OnFromChangedAsync(ChangeEventArgs e) => ApplyAsync(e.Value?.ToString(), isFrom: true);
+
+    private Task OnToChangedAsync(ChangeEventArgs e) => ApplyAsync(e.Value?.ToString(), isFrom: false);
+
+    private async Task ApplyAsync(string? value, bool isFrom)
+    {
+        // Üres vagy hibás mező (például törölt dátum) esetén nem változtatunk az időszakon.
+        if (!DateOnly.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
+        {
+            return;
+        }
+
+        var range = isFrom ? new DateRange(date, To) : new DateRange(From, date);
+        if (!range.IsValid)
+        {
+            _error = "A záró dátum nem lehet korábbi a kezdő dátumnál.";
+            return;
+        }
+
+        _error = null;
+        await Changed.InvokeAsync(range);
+    }
+}

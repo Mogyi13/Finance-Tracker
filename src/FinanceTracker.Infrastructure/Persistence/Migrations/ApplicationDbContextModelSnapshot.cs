@@ -350,6 +350,66 @@ namespace FinanceTracker.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("FinanceTracker.Domain.Entities.RecurringTransaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("CategoryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Confidence")
+                        .HasPrecision(5, 4)
+                        .HasColumnType("decimal(5,4)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .IsUnicode(false)
+                        .HasColumnType("char(3)")
+                        .IsFixedLength();
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<decimal>("ExpectedAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<byte>("Frequency")
+                        .HasColumnType("tinyint");
+
+                    b.Property<DateOnly>("LastOccurrence")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoryId");
+
+                    b.HasIndex("UserId", "Currency", "Description", "CategoryId")
+                        .IsUnique();
+
+                    b.ToTable("RecurringTransactions", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_RecurringTransactions_Confidence", "[Confidence] BETWEEN 0 AND 1");
+
+                            t.HasCheckConstraint("CK_RecurringTransactions_Currency_Length", "LEN([Currency]) = 3");
+
+                            t.HasCheckConstraint("CK_RecurringTransactions_ExpectedAmount_Positive", "[ExpectedAmount] > 0");
+
+                            t.HasCheckConstraint("CK_RecurringTransactions_Frequency", "[Frequency] IN (1, 2, 3, 4)");
+                        });
+                });
+
             modelBuilder.Entity("FinanceTracker.Domain.Entities.Transaction", b =>
                 {
                     b.Property<Guid>("Id")
@@ -691,6 +751,20 @@ namespace FinanceTracker.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("ImportBatchId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FinanceTracker.Domain.Entities.RecurringTransaction", b =>
+                {
+                    b.HasOne("FinanceTracker.Domain.Entities.Category", null)
+                        .WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("FinanceTracker.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 

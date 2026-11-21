@@ -1,0 +1,177 @@
+﻿@page "/recurring"
+@attribute [Authorize]
+@inherits AuthorizedPageBase
+@using FinanceTracker.Application.Features.Analytics.Recurring
+@inject AnalyticsApiClient Api
+
+<PageTitle>Ismétlődő kiadások</PageTitle>
+
+<PageHeader Title="Ismétlődő kiadások" Subtitle="A korábbi kiadásaid alapján valószínűleg rendszeresen visszatérő tételek.">
+    <Actions>
+        <button type="button" class="btn btn-primary" disabled="@(_loading || _analyzing)" @onclick="AnalyzeAsync">
+            @if (_analyzing)
+            {
+                <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                <span>Elemzés…</span>
+            }
+            else
+            {
+                <i class="bi bi-arrow-repeat" aria-hidden="true"></i>
+                <span>Újraelemzés</span>
+            }
+        </button>
+    </Actions>
+</PageHeader>
+
+<StatusMessage Kind="info">
+    A felismerés becslésen alapul: a hasonló összegű, rendszeres időközönként visszatérő kiadásokat keresi.
+    Az eredmény nem megerősített előfizetés vagy szerződés, ezért érdemes magad is ellenőrizni.
+</StatusMessage>
+
+@if (_error is not null)
+{
+    <StatusMessage Kind="danger">@_error</StatusMessage>
+}
+
+@if (_loading)
+{
+    <div class="ft-card"><LoadingState /></div>
+}
+else if (_data is not null)
+{
+    @if (_data.IsStale)
+    {
+        <StatusMessage Kind="warning">Az utolsó elemzés óta új vagy módosított tranzakciók születtek. Az „Újraelemzés” gombbal frissítheted az eredményt.</StatusMessage>
+    }
+
+    @if (_data.Items.Count == 0)
+    {
+        <div class="ft-card">
+            <EmptyState Icon="bi-arrow-repeat" Title="Nem találtunk ismétlődő kiadást"
+                        Text="Az ismétlődések felismeréséhez legalább néhány, hasonló leírású és összegű, rendszeres időközönként rögzített kiadás kell (például havi előfizetések, közös költség).">
+                <a class="btn btn-outline-primary" href="import"><i class="bi bi-upload" aria-hidden="true"></i> CSV-import</a>
+            </EmptyState>
+        </div>
+    }
+    else
+    {
+        <div class="stat-grid">
+            @foreach (var estimate in _data.MonthlyEstimates)
+            {
+                <div class="ft-card stat-card">
+                    <span class="stat-icon amber"><i class="bi bi-calendar2-week" aria-hidden="true"></i></span>
+                    <div>
+                        <div class="stat-label">Becsült havi terhelés (@estimate.Currency)</div>
+                        <div class="stat-value">@AnalyticsFormat.Money(estimate.Amount, estimate.Currency)</div>
+                        <div class="stat-sub">a felismert ismétlődések havi értékre átszámolva</div>
+                    </div>
+                </div>
+            }
+            <div class="ft-card stat-card">
+                <span class="stat-icon indigo"><i class="bi bi-arrow-repeat" aria-hidden="true"></i></span>
+                <div>
+                    <div class="stat-label">Felismert ismétlődések</div>
+                    <div class="stat-value">@_data.Items.Count.ToString("N0", TransactionFormat.Hu)</div>
+                    @if (_data.AnalyzedAt is { } at)
+                    {
+                        <div class="stat-sub">Elemzés: @at.ToLocalTime().ToString("yyyy. MM. dd. HH:mm", TransactionFormat.Hu)</div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="ft-card">
+            <div class="table-responsive">
+                <table class="ft-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Kiadás</th>
+                            <th scope="col">Gyakoriság</th>
+                            <th scope="col" class="text-end">Becsült összeg</th>
+                            <th scope="col">Utolsó előfordulás</th>
+                            <th scope="col">Következő várható</th>
+                            <th scope="col">Bizonyosság</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in _data.Items)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="tx-title">@item.Description</div>
+                                    <div class="tx-sub">@(item.CategoryName ?? "Kategorizálatlan")</div>
+                                </td>
+                                <td>@AnalyticsFormat.FrequencyText(item.Frequency)</td>
+                                <td class="text-end amount amount-expense">@AnalyticsFormat.Money(item.ExpectedAmount, item.Currency)</td>
+                                <td class="date-cell">@TransactionFormat.Date(item.LastOccurrence)</td>
+                                <td class="date-cell">@TransactionFormat.Date(item.NextExpectedDate)</td>
+                                <td>
+                                    <span class="chip @AnalyticsFormat.ConfidenceChipClass(item.Confidence)"
+                                          title="@($"Felismerési bizonyosság: {item.Confidence.ToString("P0", TransactionFormat.Hu)}")">
+                                        @AnalyticsFormat.ConfidenceText(item.Confidence) · @item.Confidence.ToString("P0", TransactionFormat.Hu)
+                                    </span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private RecurringTransactionsDto? _data;
+    private bool _loading = true;
+    private bool _analyzing;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var response = await Api.GetRecurringAsync();
+        if (await HandleUnauthorizedAsync(response))
+        {
+            return;
+        }
+
+        if (!response.IsSuccess)
+        {
+            _error = string.Join(" ", response.Messages);
+            _loading = false;
+            return;
+        }
+
+        _data = response.Value;
+
+        // Első megnyitáskor (még nincs mentett eredmény) a rendszer magától elvégzi az elemzést.
+        if (_data!.AnalyzedAt is null)
+        {
+            await AnalyzeAsync();
+        }
+
+        _loading = false;
+    }
+
+    private async Task AnalyzeAsync()
+    {
+        _analyzing = true;
+        _error = null;
+
+        var response = await Api.AnalyzeRecurringAsync();
+        _analyzing = false;
+
+        if (await HandleUnauthorizedAsync(response))
+        {
+            return;
+        }
+
+        if (response.IsSuccess)
+        {
+            _data = response.Value;
+        }
+        else
+        {
+            _error = string.Join(" ", response.Messages);
+        }
+    }
+}
