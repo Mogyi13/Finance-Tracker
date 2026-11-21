@@ -1,4 +1,7 @@
 ﻿using FinanceTracker.Application.Features.Analytics.ComparePeriods;
+using FinanceTracker.Application.Features.Anomalies;
+using FinanceTracker.Application.Features.Budgets;
+using FinanceTracker.Application.Features.Forecasting;
 using FinanceTracker.Application.Features.Analytics.GetCategoryBreakdown;
 using FinanceTracker.Application.Features.Analytics.GetOverview;
 using FinanceTracker.Application.Features.Analytics.Recurring;
@@ -85,6 +88,23 @@ public static class DependencyInjection
         services.AddScoped<ComparePeriodsHandler>();
         services.AddScoped<GetRecurringHandler>();
         services.AddScoped<DetectRecurringHandler>();
+
+        // UC-25: anomáliafelismerés; UC-26, UC-27: költségkeretek; UC-28: előrejelzés.
+        // A beállítások alapértékeit az Infrastructure a konfigurációból felülírja.
+        services.TryAddSingleton<AnomalySettings>();
+        services.TryAddSingleton<BudgetSettings>();
+        services.TryAddSingleton<ForecastSettings>();
+        services.AddScoped<GetAnomaliesHandler>();
+        services.AddScoped<AnalyzeAnomaliesHandler>();
+        services.AddScoped<ReviewAnomalyHandler>();
+        services.AddScoped<GetBudgetsHandler>();
+        services.AddScoped<CreateBudgetHandler>();
+        services.AddScoped<UpdateBudgetHandler>();
+        services.AddScoped<DeleteBudgetHandler>();
+        services.AddScoped<GetBudgetStatusHandler>();
+        services.AddScoped<GenerateForecastHandler>();
+        services.AddScoped<GetForecastHandler>();
+        services.AddScoped<EvaluateForecastHandler>();
 
         // UC-20: modell tanítása, kiértékelése, aktiválása
         services.AddScoped<TrainModelHandler>();

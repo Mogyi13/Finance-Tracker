@@ -1,0 +1,238 @@
+﻿@page "/anomalies"
+@attribute [Authorize]
+@inherits AuthorizedPageBase
+@using FinanceTracker.Application.Features.Anomalies
+@inject AnomalyApiClient Api
+
+<PageTitle>Szokatlan kiadások</PageTitle>
+
+<PageHeader Title="Szokatlan kiadások" Subtitle="A szokásostól jelentősen eltérő kiadások, a korábbi szokásaid alapján.">
+    <Actions>
+        <select class="form-select form-select-sm" aria-label="Érzékenység" @bind="_sensitivity" disabled="@(_loading || _analyzing)">
+            <option value="">Alapértelmezett érzékenység</option>
+            <option value="2.0">Érzékenyebb (több jelzés)</option>
+            <option value="4.0">Szigorúbb (kevesebb jelzés)</option>
+        </select>
+        <button type="button" class="btn btn-primary" disabled="@(_loading || _analyzing)" @onclick="AnalyzeAsync">
+            @if (_analyzing)
+            {
+                <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                <span>Elemzés…</span>
+            }
+            else
+            {
+                <i class="bi bi-arrow-repeat" aria-hidden="true"></i>
+                <span>Újraelemzés</span>
+            }
+        </button>
+    </Actions>
+</PageHeader>
+
+<StatusMessage Kind="info">
+    A jelzés statisztikai: a szokásos összegtől vagy havi szinttől való nagy eltérést mutatja. Nem jelenti, hogy hiba vagy csalás történt,
+    egy nagyobb vásárlás vagy egyszeri kiadás is jelezhető.
+</StatusMessage>
+
+@if (_error is not null)
+{
+    <StatusMessage Kind="danger">@_error</StatusMessage>
+}
+
+@if (_notice is not null)
+{
+    <StatusMessage Kind="warning">@_notice</StatusMessage>
+}
+
+@if (_loading)
+{
+    <div class="ft-card"><LoadingState /></div>
+}
+else if (_data is not null)
+{
+    <div class="stat-grid">
+        <div class="ft-card stat-card">
+            <span class="stat-icon @(_data.UnreviewedCount > 0 ? "amber" : "green")"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i></span>
+            <div>
+                <div class="stat-label">Áttekintésre váró jelzés</div>
+                <div class="stat-value">@_data.UnreviewedCount.ToString("N0", TransactionFormat.Hu)</div>
+                @if (_data.LastAnalyzedAt is { } at)
+                {
+                    <div class="stat-sub">Utolsó elemzés: @at.ToLocalTime().ToString("yyyy. MM. dd. HH:mm", TransactionFormat.Hu)</div>
+                }
+            </div>
+        </div>
+        <div class="ft-card stat-card">
+            <span class="stat-icon indigo"><i class="bi bi-sliders" aria-hidden="true"></i></span>
+            <div>
+                <div class="stat-label">Alapértelmezett küszöb</div>
+                <div class="stat-value">@_data.AmountThreshold.ToString("0.0", TransactionFormat.Hu) σ</div>
+                <div class="stat-sub">kategória szerinti havi eltérésnél @_data.CategoryThreshold.ToString("0.0", TransactionFormat.Hu) σ</div>
+            </div>
+        </div>
+    </div>
+
+    <label class="form-check mb-3">
+        <input class="form-check-input" type="checkbox" checked="@_includeReviewed" @onchange="ToggleReviewedAsync" />
+        <span class="form-check-label">Az áttekintett jelzések is látszódjanak</span>
+    </label>
+
+    @if (_data.Items.Count == 0)
+    {
+        <div class="ft-card">
+            <EmptyState Icon="bi-shield-check" Title="Nincs szokatlan kiadás"
+                        Text="A mostani adataid alapján nem találtunk a szokásostól jelentősen eltérő kiadást." />
+        </div>
+    }
+    else
+    {
+        <div class="ft-card">
+            <div class="table-responsive">
+                <table class="ft-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Tranzakció</th>
+                            <th scope="col">Jelzés</th>
+                            <th scope="col" class="text-end">Összeg</th>
+                            <th scope="col" class="text-end">Eltérés</th>
+                            <th scope="col"><span class="visually-hidden">Műveletek</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in _data.Items)
+                        {
+                            <tr class="@(item.IsReviewed ? "row-muted" : null)">
+                                <td>
+                                    <div class="tx-title">@(item.TransactionDescription ?? "Nincs leírás")</div>
+                                    <div class="tx-sub">@TransactionFormat.Date(item.TransactionDate) · @(item.CategoryName ?? "Kategorizálatlan")</div>
+                                </td>
+                                <td>
+                                    <span class="chip chip-warning">@PlanningFormat.AnomalyTypeText(item.Type)</span>
+                                    <div class="tx-sub mt-1">@item.Description</div>
+                                </td>
+                                <td class="text-end amount amount-expense">@AnalyticsFormat.Money(item.Amount, item.Currency)</td>
+                                <td class="text-end">@(item.Score is { } s ? s.ToString("0.0", TransactionFormat.Hu) + " σ" : "–")</td>
+                                <td class="text-end">
+                                    @if (item.IsReviewed)
+                                    {
+                                        <span class="pill"><i class="bi bi-check2" aria-hidden="true"></i> Áttekintve</span>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" disabled="@(_reviewing == item.Id)" @onclick="() => ReviewAsync(item.Id)">
+                                            <i class="bi bi-check2" aria-hidden="true"></i> Rendben
+                                        </button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private AnomaliesDto? _data;
+    private bool _loading = true;
+    private bool _analyzing;
+    private bool _includeReviewed;
+    private Guid? _reviewing;
+    private string _sensitivity = string.Empty;
+    private string? _error;
+    private string? _notice;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var response = await Api.GetAsync(_includeReviewed);
+        if (await HandleUnauthorizedAsync(response))
+        {
+            return;
+        }
+
+        if (!response.IsSuccess)
+        {
+            _error = string.Join(" ", response.Messages);
+            _loading = false;
+            return;
+        }
+
+        _data = response.Value;
+
+        // Első megnyitáskor (még nincs mentett eredmény) a rendszer magától elvégzi az elemzést.
+        if (_data!.LastAnalyzedAt is null)
+        {
+            await AnalyzeAsync();
+        }
+
+        _loading = false;
+    }
+
+    private async Task AnalyzeAsync()
+    {
+        _analyzing = true;
+        _error = null;
+
+        double? threshold = double.TryParse(_sensitivity, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var t) ? t : null;
+        var response = await Api.AnalyzeAsync(threshold);
+        _analyzing = false;
+
+        if (await HandleUnauthorizedAsync(response))
+        {
+            return;
+        }
+
+        if (!response.IsSuccess)
+        {
+            _error = string.Join(" ", response.Messages);
+            return;
+        }
+
+        _notice = response.Value!.Notice;
+        await ReloadAsync();
+    }
+
+    private async Task ToggleReviewedAsync(ChangeEventArgs e)
+    {
+        _includeReviewed = e.Value is true;
+        await ReloadAsync();
+    }
+
+    private async Task ReviewAsync(Guid id)
+    {
+        _reviewing = id;
+        var response = await Api.ReviewAsync(id);
+        _reviewing = null;
+
+        if (await HandleUnauthorizedAsync(response))
+        {
+            return;
+        }
+
+        if (!response.IsSuccess)
+        {
+            _error = string.Join(" ", response.Messages);
+            return;
+        }
+
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        var response = await Api.GetAsync(_includeReviewed);
+        if (await HandleUnauthorizedAsync(response))
+        {
+            return;
+        }
+
+        if (response.IsSuccess)
+        {
+            _data = response.Value;
+        }
+        else
+        {
+            _error = string.Join(" ", response.Messages);
+        }
+    }
+}

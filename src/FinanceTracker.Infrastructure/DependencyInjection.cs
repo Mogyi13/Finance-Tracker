@@ -1,5 +1,8 @@
 ﻿using FinanceTracker.Application.Common.Abstractions;
 using FinanceTracker.Application.Features.Analytics;
+using FinanceTracker.Application.Features.Anomalies;
+using FinanceTracker.Application.Features.Budgets;
+using FinanceTracker.Application.Features.Forecasting;
 using FinanceTracker.Application.Features.Categorization;
 using FinanceTracker.Application.Features.Categorization.Ml;
 using FinanceTracker.Application.Features.Imports;
@@ -54,6 +57,21 @@ public static class DependencyInjection
         services.AddScoped<ITransactionQueries, TransactionQueries>();
         services.AddScoped<IAnalyticsQueries, AnalyticsQueries>();
         services.AddScoped<IRecurringTransactionRepository, RecurringTransactionRepository>();
+
+        // UC-25..UC-28: anomáliák, költségkeretek, előrejelzés. A küszöbök és ablakok a konfigurációból jönnek.
+        services.Configure<AnomalySettings>(configuration.GetSection(AnomalySettings.SectionName));
+        services.AddSingleton(sp => sp.GetRequiredService<IOptions<AnomalySettings>>().Value);
+        services.Configure<BudgetSettings>(configuration.GetSection(BudgetSettings.SectionName));
+        services.AddSingleton(sp => sp.GetRequiredService<IOptions<BudgetSettings>>().Value);
+        services.Configure<ForecastSettings>(configuration.GetSection(ForecastSettings.SectionName));
+        services.AddSingleton(sp => sp.GetRequiredService<IOptions<ForecastSettings>>().Value);
+
+        services.AddScoped<IAnomalyQueries, AnomalyQueries>();
+        services.AddScoped<IAnomalyRepository, AnomalyRepository>();
+        services.AddScoped<IBudgetQueries, BudgetQueries>();
+        services.AddScoped<IBudgetRepository, BudgetRepository>();
+        services.AddScoped<IForecastQueries, ForecastQueries>();
+        services.AddScoped<IForecastRepository, ForecastRepository>();
         services.AddScoped<IImportRepository, ImportRepository>();
         services.AddScoped<ICategorizationRuleRepository, CategorizationRuleRepository>();
         services.AddScoped<IDerivedDataInvalidator, LoggingDerivedDataInvalidator>();

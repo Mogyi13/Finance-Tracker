@@ -1,0 +1,372 @@
+﻿@page "/budgets"
+@attribute [Authorize]
+@inherits AuthorizedPageBase
+@using FinanceTracker.Application.Features.Budgets
+@using FinanceTracker.Application.Features.Categories
+@using FinanceTracker.Domain.Common
+@using FinanceTracker.Domain.Enums
+@inject BudgetApiClient Api
+@inject CategoryApiClient CategoryApi
+
+<PageTitle>Költségkeretek</PageTitle>
+
+<PageHeader Title="Költségkeretek" Subtitle="Állíts be kiadási keretet kategóriánként, és kövesd, mennyit használtál fel belőle.">
+    <Actions>
+        @if (!_formOpen)
+        {
+            <button type="button" class="btn btn-primary" @onclick="OpenCreate">
+                <i class="bi bi-plus-lg" aria-hidden="true"></i> Új költségkeret
+            </button>
+        }
+    </Actions>
+</PageHeader>
+
+@if (_success is not null)
+{
+    <StatusMessage Kind="success">@_success</StatusMessage>
+}
+
+@if (_pageError is not null)
+{
+    <StatusMessage Kind="danger">@_pageError</StatusMessage>
+}
+
+@if (_status is { ExceededCount: > 0 })
+{
+    <StatusMessage Kind="danger">@_status.ExceededCount költségkeret kimerült vagy túllépted az aktuális időszakban.</StatusMessage>
+}
+else if (_status is { WarningCount: > 0 })
+{
+    <StatusMessage Kind="warning">@_status.WarningCount költségkeret eléri a keret @PlanningFormat.Percent(_status.WarningThreshold)-át az aktuális időszakban.</StatusMessage>
+}
+
+@if (_formOpen)
+{
+    <div class="ft-card mb-4" style="max-width: 720px;">
+        <div class="ft-card-header">
+            <h2 class="ft-card-title">@(_editingId is null ? "Új költségkeret" : "Költségkeret szerkesztése")</h2>
+        </div>
+
+        <EditForm Model="_model" OnValidSubmit="SaveAsync">
+            <DataAnnotationsValidator />
+
+            <div class="ft-card-body">
+                @if (_formErrors.Count > 0)
+                {
+                    <StatusMessage Kind="danger" Messages="_formErrors" />
+                }
+
+                <div class="row g-3">
+                    <div class="col-md-12">
+                        <label class="form-label" for="b-category">Kiadási kategória</label>
+                        <InputSelect id="b-category" class="form-select" @bind-Value="_model.CategoryKey">
+                            <option value="">Válassz kategóriát…</option>
+                            @foreach (var category in _expenseCategories)
+                            {
+                                <option value="@category.Id">@category.Name</option>
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="() => _model.CategoryKey" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="b-amount">Keret összege</label>
+                        <InputNumber id="b-amount" class="form-control" step="0.01" min="0" placeholder="0,00" @bind-Value="_model.Amount" />
+                        <ValidationMessage For="() => _model.Amount" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="b-currency">Pénznem</label>
+                        <InputSelect id="b-currency" class="form-select" @bind-Value="_model.Currency">
+                            @foreach (var currency in SupportedCurrencies.All)
+                            {
+                                <option value="@currency">@currency</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="b-period">Időszak</label>
+                        <InputSelect id="b-period" class="form-select" @bind-Value="_model.PeriodType">
+                            <option value="@BudgetPeriodType.Monthly">Havi</option>
+                            <option value="@BudgetPeriodType.Weekly">Heti</option>
+                            <option value="@BudgetPeriodType.Custom">Egyedi időszak</option>
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="b-start">Kezdő dátum</label>
+                        <InputDate id="b-start" class="form-control" @bind-Value="_model.StartDate" />
+                        <ValidationMessage For="() => _model.StartDate" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="b-end">Záró dátum @(_model.PeriodType == BudgetPeriodType.Custom ? null : "(nem kötelező)")</label>
+                        <InputDate id="b-end" class="form-control" @bind-Value="_model.EndDate" />
+                        <ValidationMessage For="() => _model.EndDate" />
+                    </div>
+                </div>
+                <div class="form-text mt-2">
+                    Havi keretnél a kezdő nap a hónap első napjára, heti keretnél a hét hétfőjére igazodik. Záró dátum nélkül a keret határozatlan ideig érvényes.
+                    Ugyanarra a kategóriára és pénznemre egy időszakban csak egy keret adható meg.
+                </div>
+            </div>
+
+            <div class="ft-card-footer justify-content-end">
+                <button type="button" class="btn btn-outline-secondary" disabled="@_busy" @onclick="CloseForm">Mégse</button>
+                <button type="submit" class="btn btn-primary" disabled="@_busy">
+                    @if (_busy)
+                    {
+                        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                    }
+                    Mentés
+                </button>
+            </div>
+        </EditForm>
+    </div>
+}
+
+@if (_loading)
+{
+    <div class="ft-card"><LoadingState /></div>
+}
+else if (_status is null || _status.Items.Count == 0)
+{
+    <div class="ft-card">
+        <EmptyState Icon="bi-piggy-bank" Title="Még nincs költségkereted"
+                    Text="Adj meg egy havi vagy heti keretet egy kiadási kategóriára, és figyelmeztetünk, ha közel jársz a határához." />
+    </div>
+}
+else
+{
+    <div class="budget-grid">
+        @foreach (var item in _status.Items)
+        {
+            var width = Math.Min(item.UsedRatio, 1m) * 100m;
+            <div class="ft-card budget-card @(item.IsActive ? null : "budget-inactive")">
+                <div class="ft-card-body">
+                    <div class="budget-head">
+                        <div>
+                            <div class="tx-title">@item.CategoryName</div>
+                            <div class="tx-sub">
+                                @PlanningFormat.PeriodTypeText(item.PeriodType) · @TransactionFormat.Date(item.PeriodStart) – @TransactionFormat.Date(item.PeriodEnd)
+                                @if (!item.IsActive)
+                                {
+                                    <span> · nem aktív</span>
+                                }
+                            </div>
+                        </div>
+                        <span class="chip @PlanningFormat.BudgetLevelChip(item.Level)">@PlanningFormat.BudgetLevelText(item.Level)</span>
+                    </div>
+
+                    <div class="bar-track budget-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100"
+                         aria-valuenow="@((int)width)" aria-label="@($"{item.CategoryName} keret felhasználtsága")">
+                        <div class="bar-fill @PlanningFormat.BudgetBarClass(item.Level)" style="width: @(width.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))%"></div>
+                    </div>
+
+                    <div class="budget-figures">
+                        <span><strong>@AnalyticsFormat.Money(item.Spent, item.Currency)</strong> / @AnalyticsFormat.Money(item.Amount, item.Currency)</span>
+                        <span>@PlanningFormat.Percent(item.UsedRatio)</span>
+                    </div>
+                    <div class="tx-sub">
+                        @if (item.Remaining >= 0)
+                        {
+                            <span>Még @AnalyticsFormat.Money(item.Remaining, item.Currency) használható fel.</span>
+                        }
+                        else
+                        {
+                            <span>@AnalyticsFormat.Money(Math.Abs(item.Remaining), item.Currency) a túllépés.</span>
+                        }
+                    </div>
+                </div>
+                <div class="ft-card-footer justify-content-end">
+                    <button type="button" class="icon-btn" title="Szerkesztés" aria-label="@($"{item.CategoryName} keret szerkesztése")" @onclick="() => OpenEdit(item.BudgetId)"><i class="bi bi-pencil" aria-hidden="true"></i></button>
+                    <button type="button" class="icon-btn danger" title="Törlés" aria-label="@($"{item.CategoryName} keret törlése")" @onclick="() => AskDelete(item)"><i class="bi bi-trash3" aria-hidden="true"></i></button>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@if (_deleteTarget is not null)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="deleteBudgetTitle">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body p-4">
+                    <span class="modal-icon"><i class="bi bi-trash3" aria-hidden="true"></i></span>
+                    <h2 class="h5 mb-2" id="deleteBudgetTitle">Költségkeret törlése</h2>
+                    <p class="text-muted">Biztosan törölni szeretnéd a(z) <strong>@_deleteTarget.CategoryName</strong> költségkeretet? A tranzakciókat a törlés nem érinti.</p>
+                </div>
+                <div class="modal-footer border-0 pt-0 px-4 pb-4">
+                    <button type="button" class="btn btn-outline-secondary" disabled="@_deleting" @onclick="CancelDelete">Mégse</button>
+                    <button type="button" class="btn btn-danger" disabled="@_deleting" @onclick="ConfirmDeleteAsync">
+                        @if (_deleting)
+                        {
+                            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                        }
+                        Törlés
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private BudgetStatusesDto? _status;
+    private List<BudgetDto> _budgets = new();
+    private List<CategoryDto> _expenseCategories = new();
+    private BudgetFormModel _model = new();
+    private List<string> _formErrors = new();
+    private string? _pageError;
+    private string? _success;
+    private Guid? _editingId;
+    private bool _formOpen;
+    private bool _loading = true;
+    private bool _busy;
+
+    private BudgetStatusDto? _deleteTarget;
+    private bool _deleting;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var categories = await CategoryApi.GetAllAsync();
+        if (await HandleUnauthorizedAsync(categories))
+        {
+            return;
+        }
+
+        if (categories.IsSuccess)
+        {
+            _expenseCategories = categories.Value!
+                .Where(c => c.Type == CategoryType.Expense)
+                .OrderBy(c => c.Name, StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var status = await Api.GetStatusAsync();
+        if (await HandleUnauthorizedAsync(status))
+        {
+            return;
+        }
+
+        var all = await Api.GetAllAsync();
+        if (await HandleUnauthorizedAsync(all))
+        {
+            return;
+        }
+
+        if (status.IsSuccess && all.IsSuccess)
+        {
+            _status = status.Value;
+            _budgets = all.Value!;
+        }
+        else
+        {
+            _pageError = string.Join(" ", status.IsSuccess ? all.Messages : status.Messages);
+        }
+
+        _loading = false;
+    }
+
+    private void OpenCreate()
+    {
+        _success = null;
+        _editingId = null;
+        _model = new BudgetFormModel
+        {
+            StartDate = DateOnly.FromDateTime(DateTime.Today)
+        };
+        _formErrors = new List<string>();
+        _formOpen = true;
+    }
+
+    private void OpenEdit(Guid budgetId)
+    {
+        var budget = _budgets.FirstOrDefault(b => b.Id == budgetId);
+        if (budget is null)
+        {
+            return;
+        }
+
+        _success = null;
+        _editingId = budget.Id;
+        _model = BudgetFormModel.From(budget);
+        _formErrors = new List<string>();
+        _formOpen = true;
+    }
+
+    private void CloseForm()
+    {
+        _formOpen = false;
+        _editingId = null;
+        _formErrors = new List<string>();
+    }
+
+    private async Task SaveAsync()
+    {
+        _busy = true;
+        _formErrors = new List<string>();
+
+        var isEdit = _editingId is not null;
+        var result = isEdit
+            ? await Api.UpdateAsync(_editingId!.Value, _model.ToCommand())
+            : await Api.CreateAsync(_model.ToCommand());
+
+        _busy = false;
+
+        if (await HandleUnauthorizedAsync(result))
+        {
+            return;
+        }
+
+        if (!result.IsSuccess)
+        {
+            _formErrors = result.Messages.ToList();
+            return;
+        }
+
+        CloseForm();
+        _success = isEdit ? "A költségkeret módosítása sikeres." : "A költségkeret létrehozása sikeres.";
+        await LoadAsync();
+    }
+
+    private void AskDelete(BudgetStatusDto item)
+    {
+        _success = null;
+        _pageError = null;
+        _deleteTarget = item;
+    }
+
+    private void CancelDelete() => _deleteTarget = null;
+
+    private async Task ConfirmDeleteAsync()
+    {
+        if (_deleteTarget is null)
+        {
+            return;
+        }
+
+        _deleting = true;
+        var result = await Api.DeleteAsync(_deleteTarget.BudgetId);
+        _deleting = false;
+
+        if (await HandleUnauthorizedAsync(result))
+        {
+            return;
+        }
+
+        _deleteTarget = null;
+
+        if (!result.IsSuccess)
+        {
+            _pageError = string.Join(" ", result.Messages);
+            return;
+        }
+
+        _success = "A költségkeret törlése sikeres.";
+        await LoadAsync();
+    }
+}

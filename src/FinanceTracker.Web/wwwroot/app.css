@@ -2163,3 +2163,114 @@ a {
         grid-template-columns: 1fr;
     }
 }
+
+/* 18 · Költségkeretek, anomáliák és előrejelzés (UC-25 – UC-28) */
+.budget-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(21rem, 1fr));
+    gap: 1.25rem;
+}
+
+.budget-card.budget-inactive {
+    opacity: .7;
+}
+
+.budget-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: .75rem;
+    margin-bottom: .9rem;
+}
+
+.budget-bar {
+    height: .75rem;
+}
+
+.budget-figures {
+    display: flex;
+    justify-content: space-between;
+    gap: .75rem;
+    margin: .6rem 0 .2rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.bar-fill.bar-ok {
+    background: var(--ft-income);
+}
+
+.bar-fill.bar-warning {
+    background: #f59e0b;
+}
+
+.bar-fill.bar-danger {
+    background: var(--ft-expense);
+}
+
+.bar-fill.bar-forecast {
+    background: repeating-linear-gradient(135deg, #a5b4fc, #a5b4fc 6px, #c7d2fe 6px, #c7d2fe 12px);
+}
+
+.segmented button.seg-option {
+    border: 0;
+    background: transparent;
+}
+
+    .segmented button.seg-option.active {
+        background: #fff;
+        color: var(--ft-primary);
+        box-shadow: var(--ft-shadow-sm);
+    }
+
+.row-muted {
+    opacity: .6;
+}
+
+.forecast-row {
+    background: #fafbff;
+}
+
+.forecast-month {
+    white-space: nowrap;
+    font-weight: 600;
+}
+
+.forecast-bar-cell {
+    width: 50%;
+    min-width: 10rem;
+}
+
+.diverge {
+    display: flex;
+    height: .6rem;
+}
+
+.diverge-pos,
+.diverge-neg {
+    flex: 1;
+    height: 100%;
+    border-radius: 999px;
+    background: #eef2f7;
+    overflow: hidden;
+}
+
+.diverge-both .diverge-neg {
+    display: flex;
+    justify-content: flex-end;
+    border-radius: 999px 0 0 999px;
+    margin-right: 2px;
+}
+
+.diverge-both .diverge-pos {
+    border-radius: 0 999px 999px 0;
+}
+
+.diverge:not(.diverge-both) .diverge-pos {
+    display: block;
+}
+
+@media (max-width: 575.98px) {
+    .budget-grid {
+        grid-template-columns: 1fr;
+    }
+}
