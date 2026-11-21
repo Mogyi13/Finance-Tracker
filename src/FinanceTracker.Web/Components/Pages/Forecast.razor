@@ -1,0 +1,294 @@
+﻿@page "/forecast"
+@attribute [Authorize]
+@inherits AuthorizedPageBase
+@using FinanceTracker.Application.Features.Forecasting
+@using FinanceTracker.Domain.Enums
+@inject ForecastApiClient Api
+
+<PageTitle>Előrejelzés</PageTitle>
+
+<PageHeader Title="Előrejelzés" Subtitle="A korábbi hónapok alapján becsült következő hónapok.">
+    <Actions>
+        <div class="segmented" role="group" aria-label="Előrejelzés típusa">
+            <button type="button" class="seg-option @(_type == ForecastType.MonthlyExpenses ? "active" : null)" disabled="@(_loading || _generating)" @onclick="() => SwitchAsync(ForecastType.MonthlyExpenses)">Havi kiadás</button>
+            <button type="button" class="seg-option @(_type == ForecastType.MonthlyNetCashFlow ? "active" : null)" disabled="@(_loading || _generating)" @onclick="() => SwitchAsync(ForecastType.MonthlyNetCashFlow)">Nettó pénzforgalom</button>
+        </div>
+        <button type="button" class="btn btn-primary" disabled="@(_loading || _generating)" @onclick="GenerateAsync">
+            @if (_generating)
+            {
+                <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                <span>Számolás…</span>
+            }
+            else
+            {
+                <i class="bi bi-arrow-repeat" aria-hidden="true"></i>
+                <span>Újraszámolás</span>
+            }
+        </button>
+    </Actions>
+</PageHeader>
+
+<StatusMessage Kind="warning">
+    @(_data?.Disclaimer ?? "Az előrejelzés a korábbi adatokból számolt becslés, nem garantált érték.")
+</StatusMessage>
+
+@if (_error is not null)
+{
+    <StatusMessage Kind="danger">@_error</StatusMessage>
+}
+
+@if (_loading)
+{
+    <div class="ft-card"><LoadingState /></div>
+}
+else if (_data is not null)
+{
+    @if (_data.Currencies.Count == 0)
+    {
+        <div class="ft-card">
+            <EmptyState Icon="bi-graph-up-arrow" Title="Még nincs elég adat az előrejelzéshez"
+                        Text="Az előrejelzéshez több lezárt hónapnyi tranzakció kell. Importálj vagy rögzíts további tranzakciókat.">
+                <a class="btn btn-outline-primary" href="import"><i class="bi bi-upload" aria-hidden="true"></i> CSV-import</a>
+            </EmptyState>
+        </div>
+    }
+
+    @foreach (var currency in _data.Currencies)
+    {
+        var evaluation = _evaluation?.Currencies.FirstOrDefault(c => c.Currency == currency.Currency);
+        <section class="currency-section mb-4">
+            <h2 class="section-title"><i class="bi bi-cash-coin" aria-hidden="true"></i> @currency.Currency</h2>
+
+            @if (currency.Warning is not null)
+            {
+                <StatusMessage Kind="warning">@currency.Warning</StatusMessage>
+            }
+
+            @if (currency.Methods.Count > 0)
+            {
+                var rows = BuildRows(currency);
+                var max = rows.Max(r => Math.Abs(r.Amount));
+                var hasNegative = rows.Any(r => r.Amount < 0);
+
+                <div class="ft-card">
+                    <div class="ft-card-header">
+                        <h3 class="ft-card-title">@(_type == ForecastType.MonthlyExpenses ? "Havi kiadás" : "Havi nettó pénzforgalom"): előzmények és becslés</h3>
+                        @if (_data.GeneratedAt is { } at)
+                        {
+                            <span class="text-muted small">Számolva: @at.ToLocalTime().ToString("yyyy. MM. dd. HH:mm", TransactionFormat.Hu)</span>
+                        }
+                    </div>
+                    <div class="table-responsive">
+                        <table class="ft-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Hónap</th>
+                                    <th scope="col">Érték</th>
+                                    <th scope="col" class="text-end">Összeg</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var row in rows)
+                                {
+                                    var width = max == 0 ? 0m : Math.Abs(row.Amount) / max * 100m;
+                                    <tr class="@(row.Method is null ? null : "forecast-row")">
+                                        <th scope="row" class="forecast-month">
+                                            @PlanningFormat.MonthLabel(row.Month)
+                                            @if (row.Method is { } method)
+                                            {
+                                                <span class="chip chip-info ms-1" title="Becslés, nem tényadat">becslés · @PlanningFormat.MethodText(method)</span>
+                                            }
+                                        </th>
+                                        <td class="forecast-bar-cell">
+                                            <div class="diverge @(hasNegative ? "diverge-both" : null)">
+                                                @if (hasNegative)
+                                                {
+                                                    <div class="diverge-neg">
+                                                        @if (row.Amount < 0)
+                                                        {
+                                                            <div class="bar-fill bar-danger" style="width: @Pct(width)%"></div>
+                                                        }
+                                                    </div>
+                                                }
+                                                <div class="diverge-pos">
+                                                    @if (row.Amount >= 0)
+                                                    {
+                                                        <div class="bar-fill @(row.Method is null ? null : "bar-forecast")" style="width: @Pct(width)%"></div>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="text-end">@AnalyticsFormat.Money(row.Amount, currency.Currency)</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+
+            @if (evaluation is not null)
+            {
+                <div class="ft-card mt-3">
+                    <div class="ft-card-header">
+                        <h3 class="ft-card-title">A két módszer pontossága</h3>
+                        @if (evaluation.BestMethod is { } best)
+                        {
+                            <span class="chip chip-success">Eddig pontosabb: @PlanningFormat.MethodText(best)</span>
+                        }
+                    </div>
+                    @if (evaluation.Notice is not null)
+                    {
+                        <div class="ft-card-body text-muted">@evaluation.Notice</div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="ft-table">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Módszer</th>
+                                        <th scope="col" class="text-end" title="Átlagos abszolút hiba">MAE</th>
+                                        <th scope="col" class="text-end" title="Négyzetes középhiba">RMSE</th>
+                                        <th scope="col" class="text-end" title="Átlagos relatív hiba (a 0 értékű hónapok nélkül)">MAPE</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var m in evaluation.Methods)
+                                    {
+                                        <tr>
+                                            <th scope="row">@PlanningFormat.MethodText(m.Method)</th>
+                                            <td class="text-end">@AnalyticsFormat.Money(m.Mae, currency.Currency)</td>
+                                            <td class="text-end">@AnalyticsFormat.Money(m.Rmse, currency.Currency)</td>
+                                            <td class="text-end">@(m.Mape is { } p ? PlanningFormat.Percent(p) : "–")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="ft-card-footer">
+                            <span class="text-muted small">@evaluation.TestedMonths hónapon visszamenőleg tesztelve. @_evaluation!.Explanation</span>
+                        </div>
+                    }
+                </div>
+            }
+        </section>
+    }
+
+    <p class="text-muted small">A mozgóátlag ablaka: @_data.MovingAverageWindow hónap (a konfigurációban módosítható).</p>
+}
+
+@code {
+    private sealed record Row(DateOnly Month, decimal Amount, ForecastMethod? Method);
+
+    private ForecastType _type = ForecastType.MonthlyExpenses;
+    private ForecastDto? _data;
+    private ForecastEvaluationDto? _evaluation;
+    private bool _loading = true;
+    private bool _generating;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task SwitchAsync(ForecastType type)
+    {
+        if (type == _type)
+        {
+            return;
+        }
+
+        _type = type;
+        _loading = true;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _error = null;
+
+        var response = await Api.GetAsync(_type);
+        if (await HandleUnauthorizedAsync(response))
+        {
+            return;
+        }
+
+        if (!response.IsSuccess)
+        {
+            _error = string.Join(" ", response.Messages);
+            _loading = false;
+            return;
+        }
+
+        _data = response.Value;
+
+        // Első megnyitáskor (még nincs mentett becslés) a rendszer magától elvégzi a számítást.
+        if (_data!.GeneratedAt is null && _data.Currencies.Count > 0)
+        {
+            await GenerateAsync();
+        }
+        else
+        {
+            await LoadEvaluationAsync();
+        }
+
+        _loading = false;
+    }
+
+    private async Task GenerateAsync()
+    {
+        _generating = true;
+        _error = null;
+
+        var response = await Api.GenerateAsync(_type);
+        if (await HandleUnauthorizedAsync(response))
+        {
+            return;
+        }
+
+        if (response.IsSuccess)
+        {
+            _data = response.Value;
+            await LoadEvaluationAsync();
+        }
+        else
+        {
+            _error = string.Join(" ", response.Messages);
+        }
+
+        _generating = false;
+    }
+
+    private async Task LoadEvaluationAsync()
+    {
+        var response = await Api.EvaluateAsync(_type);
+        if (await HandleUnauthorizedAsync(response))
+        {
+            return;
+        }
+
+        // Az értékelés kiegészítő információ: hiba esetén az előrejelzés enélkül is megjelenik.
+        _evaluation = response.IsSuccess ? response.Value : null;
+    }
+
+    // Az utolsó 12 előzményhónap, majd a becslések hónaponként módszerenként egy sorban.
+    private static List<Row> BuildRows(ForecastCurrencyDto currency)
+    {
+        var rows = currency.History
+            .TakeLast(12)
+            .Select(p => new Row(p.Month, p.Amount, null))
+            .ToList();
+
+        foreach (var point in currency.Methods
+                     .SelectMany(m => m.Points.Select(p => (Method: m.Method, Point: p)))
+                     .OrderBy(x => x.Point.PeriodStart)
+                     .ThenBy(x => x.Method))
+        {
+            rows.Add(new Row(point.Point.PeriodStart, point.Point.Amount, point.Method));
+        }
+
+        return rows;
+    }
+
+    private static string Pct(decimal width)
+        => Math.Min(width, 100m).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+}

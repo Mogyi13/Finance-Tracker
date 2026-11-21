@@ -25,6 +25,12 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
     public DbSet<RecurringTransaction> RecurringTransactions => Set<RecurringTransaction>();
 
+    public DbSet<FinancialAnomaly> FinancialAnomalies => Set<FinancialAnomaly>();
+
+    public DbSet<Budget> Budgets => Set<Budget>();
+
+    public DbSet<ForecastResult> ForecastResults => Set<ForecastResult>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);

@@ -49,3 +49,49 @@ Authorization: Bearer {{token}}
 
 GET {{FinanceTracker.API_HostAddress}}/api/analytics/recurring
 Authorization: Bearer {{token}}
+
+###
+
+### UC-25..UC-28 (anomáliák, költségkeretek, előrejelzés)
+POST {{FinanceTracker.API_HostAddress}}/api/analytics/anomalies/analyze
+Authorization: Bearer {{token}}
+
+###
+
+GET {{FinanceTracker.API_HostAddress}}/api/analytics/anomalies?includeReviewed=false
+Authorization: Bearer {{token}}
+
+###
+
+POST {{FinanceTracker.API_HostAddress}}/api/budgets
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "categoryId": "00000000-0000-0000-0000-000000000000",
+  "amount": 80000,
+  "currency": "HUF",
+  "periodType": "Monthly",
+  "startDate": "2026-11-01",
+  "endDate": null
+}
+
+###
+
+GET {{FinanceTracker.API_HostAddress}}/api/budgets/status
+Authorization: Bearer {{token}}
+
+###
+
+POST {{FinanceTracker.API_HostAddress}}/api/forecasting/generate?type=MonthlyExpenses
+Authorization: Bearer {{token}}
+
+###
+
+GET {{FinanceTracker.API_HostAddress}}/api/forecasting/monthly
+Authorization: Bearer {{token}}
+
+###
+
+GET {{FinanceTracker.API_HostAddress}}/api/forecasting/evaluation?type=MonthlyNetCashFlow
+Authorization: Bearer {{token}}

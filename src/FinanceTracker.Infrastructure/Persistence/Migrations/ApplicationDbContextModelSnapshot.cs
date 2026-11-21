@@ -22,6 +22,62 @@ namespace FinanceTracker.Infrastructure.Persistence.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("FinanceTracker.Domain.Entities.Budget", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("CategoryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .IsUnicode(false)
+                        .HasColumnType("char(3)")
+                        .IsFixedLength();
+
+                    b.Property<DateOnly?>("EndDate")
+                        .HasColumnType("date");
+
+                    b.Property<byte>("PeriodType")
+                        .HasColumnType("tinyint");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoryId");
+
+                    b.HasIndex("UserId", "CategoryId");
+
+                    b.ToTable("Budgets", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Budgets_Amount_Positive", "[Amount] > 0");
+
+                            t.HasCheckConstraint("CK_Budgets_Currency_Length", "LEN([Currency]) = 3");
+
+                            t.HasCheckConstraint("CK_Budgets_Dates", "[EndDate] IS NULL OR [StartDate] <= [EndDate]");
+
+                            t.HasCheckConstraint("CK_Budgets_PeriodType", "[PeriodType] IN (1, 2, 3)");
+                        });
+                });
+
             modelBuilder.Entity("FinanceTracker.Domain.Entities.CategorizationFeedback", b =>
                 {
                     b.Property<Guid>("Id")
@@ -192,6 +248,105 @@ namespace FinanceTracker.Infrastructure.Persistence.Migrations
                             IsSystemCategory = true,
                             Name = "Egyéb kiadás",
                             Type = (byte)2
+                        });
+                });
+
+            modelBuilder.Entity("FinanceTracker.Domain.Entities.FinancialAnomaly", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte>("AnomalyType")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("DetectedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsReviewed")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal?>("Score")
+                        .HasPrecision(10, 4)
+                        .HasColumnType("decimal(10,4)");
+
+                    b.Property<Guid>("TransactionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TransactionId", "AnomalyType")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "IsReviewed");
+
+                    b.ToTable("FinancialAnomalies", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_FinancialAnomalies_AnomalyType", "[AnomalyType] IN (1, 2)");
+                        });
+                });
+
+            modelBuilder.Entity("FinanceTracker.Domain.Entities.ForecastResult", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .IsUnicode(false)
+                        .HasColumnType("char(3)")
+                        .IsFixedLength();
+
+                    b.Property<byte>("ForecastType")
+                        .HasColumnType("tinyint");
+
+                    b.Property<byte>("Method")
+                        .HasColumnType("tinyint");
+
+                    b.Property<Guid?>("ModelVersionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateOnly>("PeriodEnd")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly>("PeriodStart")
+                        .HasColumnType("date");
+
+                    b.Property<decimal>("PredictedAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ModelVersionId");
+
+                    b.HasIndex("UserId", "ForecastType", "PeriodStart");
+
+                    b.ToTable("ForecastResults", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_ForecastResults_Currency_Length", "LEN([Currency]) = 3");
+
+                            t.HasCheckConstraint("CK_ForecastResults_ForecastType", "[ForecastType] IN (1, 2)");
+
+                            t.HasCheckConstraint("CK_ForecastResults_Method", "[Method] IN (1, 2)");
+
+                            t.HasCheckConstraint("CK_ForecastResults_Period", "[PeriodStart] <= [PeriodEnd]");
                         });
                 });
 
@@ -465,14 +620,14 @@ namespace FinanceTracker.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("CategoryId");
 
+                    b.HasIndex("UserId", "Fingerprint")
+                        .HasFilter("[Fingerprint] IS NOT NULL");
+
                     b.HasIndex("UserId", "TransactionDate");
 
                     b.HasIndex("UserId", "CategoryId", "TransactionDate");
 
                     b.HasIndex("UserId", "Type", "TransactionDate");
-
-                    b.HasIndex("UserId", "Fingerprint")
-                        .HasFilter("[Fingerprint] IS NOT NULL");
 
                     b.ToTable("Transactions", null, t =>
                         {
@@ -693,6 +848,21 @@ namespace FinanceTracker.Infrastructure.Persistence.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("FinanceTracker.Domain.Entities.Budget", b =>
+                {
+                    b.HasOne("FinanceTracker.Domain.Entities.Category", null)
+                        .WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FinanceTracker.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("FinanceTracker.Domain.Entities.CategorizationFeedback", b =>
                 {
                     b.HasOne("FinanceTracker.Domain.Entities.Category", null)
@@ -734,6 +904,35 @@ namespace FinanceTracker.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade);
+                });
+
+            modelBuilder.Entity("FinanceTracker.Domain.Entities.FinancialAnomaly", b =>
+                {
+                    b.HasOne("FinanceTracker.Domain.Entities.Transaction", null)
+                        .WithMany()
+                        .HasForeignKey("TransactionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("FinanceTracker.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FinanceTracker.Domain.Entities.ForecastResult", b =>
+                {
+                    b.HasOne("FinanceTracker.Domain.Entities.MlModelVersion", null)
+                        .WithMany()
+                        .HasForeignKey("ModelVersionId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("FinanceTracker.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("FinanceTracker.Domain.Entities.ImportBatch", b =>
